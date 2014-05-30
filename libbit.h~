@@ -152,15 +152,15 @@ void bit_cat(unsigned char *des, unsigned char src1, unsigned char src2, int sta
 	return;
 }
 */
-void fprintb(FILE *fp, int num, int nBits){
+void printb(int num, int nBits){
 	if(num >= pow(2, nBits)) nBits = floor(log2(num)) + 1;
 	for(int i = pow(2, nBits - 1); i >= 1; i /= 2){
 		if(num >= i){
-			fprintf(fp, "1");
+			fprintf(stderr, "1");
 			num -= i;
 		}
 		else{
-			fprintf(fp, "0");
+			fprintf(stderr, "0");
 		}
 	}
 	return;

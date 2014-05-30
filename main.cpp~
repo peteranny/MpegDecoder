@@ -260,7 +260,7 @@ class MpegDecoder{
 			h->set_codeword(255, "00000001000");
 			h->make_hash_table();
 			
-			fprintf(stderr, "%d\n", h->decode(nextbits(maxLen)));
+			fprintf(stderr, "%d\n", h->decode(nextbits(maxLen));
 			exit(0);
 			return;
 		}
