@@ -9,4 +9,9 @@ clean:
 ans:
 	g++ MPEGDecoder.cpp
 	./a.out $(IN)
-
+gitinit:
+	git remote add origin http://github.com/peteranny/MpegDecoder.git
+git:
+	git add *
+	git commit -m "$(MSG)"
+	git push origin master
