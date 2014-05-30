@@ -2,6 +2,9 @@
 #ifndef EXIT
 #define EXIT(msg) {puts(msg);exit(0);}
 #endif
+
+#ifndef FILEREADER
+#define FILEREADER
 class FileReader{
 	private:
 		FILE *file;
@@ -156,4 +159,5 @@ void read4mfile_skip(FILE *file, unsigned char *byte, int dist){
 }
 */
 };
+#endif
 

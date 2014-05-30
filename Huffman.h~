@@ -1,10 +1,13 @@
 #include <cstring>
 
+#ifndef HUFFMAN
+#define HUFFMAN
 class Huffman{
 	private:
 		int *nCodesOfLen;
 		int maxLen;
 
+		int *codelen; // symbol index -> symbol codelen
 		unsigned char *symbol; // symbol index -> symbol
 		int nSymbol;
 
@@ -21,6 +24,7 @@ class Huffman{
 			memcpy(this->nCodesOfLen, nCodesOfLen, sizeof(int)*(maxLen + 1));
 			this->nSymbol = nSymbol;
 			this->symbol = new unsigned char[nSymbol];
+			this->codelen = new int[nSymbol];
 			memcpy(this->symbol, symbol, sizeof(unsigned char)*(nSymbol));
 			this->nCodewords = pow(2, maxLen);
 			this->hash = new unsigned char[nCodewords];
@@ -38,17 +42,27 @@ class Huffman{
 					fprintf(stderr, "(");
 					fprintb(stderr, codeword >> (maxLen - l), l);
 					fprintf(stderr, "), symbol=%02X(%d)\n", symbol[i], symbol[i]);
-					this->codeword[i++] = codeword;
+					this->codeword[i] = codeword;
+					this->codelen[i] = l;
+					i++;
 					if(isIncr) codeword += 1 << (maxLen - l - 1);
 				}
 			}
 			this->codeword[i] = isIncr? nCodewords: 0; // ending symbol used for hash table
 			return;
 		}
-		void set_codeword(unsigned char symbol, const char *codeword_str){
+	private:
+		int get_symbol_index(unsigned char symbol){
 			int i;
 			for(i = 0; i < nSymbol; i++) if(this->symbol[i] == symbol) break; else if(i == nSymbol - 1) EXIT("Huffman.set_codeword(): error. // i");
-
+			return i;
+		}
+	public:
+		int get_codelen(unsigned char symbol){
+			return codelen[get_symbol_index(symbol)];
+		}
+		void set_codeword(unsigned char symbol, const char *codeword_str){
+			int i = get_symbol_index(symbol);
 			int codeword = 0;
 			int codelen = strlen(codeword_str);
 			for(int j = 0; j < codelen; j++){
@@ -78,7 +92,7 @@ class Huffman{
 					fprintf(stderr, "...");
 				}
 			}
-			fprintf(stderr, "\n");
+			fprintf(stderr, "\n\n");
 			return;
 		}
 		unsigned char decode(int codeword){
@@ -89,3 +103,5 @@ class Huffman{
 			return symbol;
 		}
 };
+#endif
+
