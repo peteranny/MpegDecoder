@@ -1,0 +1,574 @@
+g++ -o main main.cpp
+make run
+./main ../MPEG/I_ONLY.M1V
+FileReader.read(): buf[0]=00, cur=00, posi=0
+FileReader.read(): buf[0]=00, cur=00, posi=0
+FileReader.read(): buf[1]=00, cur=01, posi=0
+FileReader.read(): buf[2]=01, cur=B3, posi=0
+FileReader.read(): buf[3]=B3, cur=14, posi=0
+MpegDecoder.nextbits(): buf[0]=00
+MpegDecoder.nextbits(): buf[1]=00
+MpegDecoder.nextbits(): buf[2]=01
+MpegDecoder.nextbits(): buf[3]=B3
+bit2num(): buf_head=0, nBits=32, nBytes=4
+bit2num(): buf[0]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[1]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[2]=01, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=01, ret=1
+bit2num(): buf[3]=B3, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=B3, ret=435
+FileReader.rtrn(): return B3
+FileReader.rtrn(): return 01
+FileReader.rtrn(): return 00
+FileReader.rtrn(): return 00
+FileReader.rtrn(): cur=00, posi=0
+MpegDecoder.nextbits(): ret=435
+
+sequence_header_code...
+
+FileReader.read_bits_as_num(): nBits=32
+FileReader.read_bits(): nBits=32, nBytes=4
+FileReader.read(): buf[0]=00, cur=00, posi=0
+FileReader.read(): buf[1]=00, cur=01, posi=0
+FileReader.read(): buf[2]=01, cur=B3, posi=0
+FileReader.read(): buf[3]=B3, cur=14, posi=0
+FileReader.read_bits(): cur=14, posi=0
+bit2num(): buf_head=0, nBits=32, nBytes=4
+bit2num(): buf[0]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[1]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[2]=01, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=01, ret=1
+bit2num(): buf[3]=B3, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=B3, ret=435
+MpegDecoder.read_sequence_header(): sequence_header_code=435
+
+FileReader.read_bits_as_num(): nBits=12
+FileReader.read_bits(): nBits=12, nBytes=2
+FileReader.read(): buf[0]=14, cur=00, posi=0
+FileReader.read(): buf[1]=00, cur=F0, posi=0
+FileReader.rtrn(): return 00
+FileReader.rtrn(): cur=00, posi=4
+FileReader.read_bits(): cur=00, posi=4
+bit2num(): buf_head=0, nBits=12, nBytes=2
+bit2num(): buf[0]=14, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=14, ret=20
+bit2num(): buf[1]=00, head_in_byte=0, tail_in_byte=3, nBits_in_byte=4, tmp=00, ret=320
+MpegDecoder.read_sequence_header(): horizontal_size=320
+
+FileReader.read_bits_as_num(): nBits=12
+FileReader.read_bits(): nBits=12, nBytes=2
+FileReader.read(): buf[0]=00, cur=F0, posi=4
+FileReader.read(): buf[1]=F0, cur=14, posi=4
+FileReader.read_bits(): cur=14, posi=0
+bit2num(): buf_head=4, nBits=12, nBytes=2
+bit2num(): buf[0]=00, head_in_byte=4, tail_in_byte=7, nBits_in_byte=4, tmp=00, ret=0
+bit2num(): buf[1]=F0, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=F0, ret=240
+MpegDecoder.read_sequence_header(): vertical_size=240
+
+FileReader.read_bits_as_num(): nBits=4
+FileReader.read_bits(): nBits=4, nBytes=1
+FileReader.read(): buf[0]=14, cur=07, posi=0
+FileReader.rtrn(): return 14
+FileReader.rtrn(): cur=14, posi=4
+FileReader.read_bits(): cur=14, posi=4
+bit2num(): buf_head=0, nBits=4, nBytes=1
+bit2num(): buf[0]=14, head_in_byte=0, tail_in_byte=3, nBits_in_byte=4, tmp=10, ret=1
+MpegDecoder.read_sequence_header(): pel_aspect_ratio=1
+
+FileReader.read_bits_as_num(): nBits=4
+FileReader.read_bits(): nBits=4, nBytes=1
+FileReader.read(): buf[0]=14, cur=07, posi=4
+FileReader.read_bits(): cur=07, posi=0
+bit2num(): buf_head=4, nBits=4, nBytes=1
+bit2num(): buf[0]=14, head_in_byte=4, tail_in_byte=7, nBits_in_byte=4, tmp=04, ret=4
+MpegDecoder.read_sequence_header(): picture_rate=4
+
+FileReader.read_bits_as_num(): nBits=18
+FileReader.read_bits(): nBits=18, nBytes=3
+FileReader.read(): buf[0]=07, cur=80, posi=0
+FileReader.read(): buf[1]=80, cur=23, posi=0
+FileReader.read(): buf[2]=23, cur=80, posi=0
+FileReader.rtrn(): return 23
+FileReader.rtrn(): cur=23, posi=2
+FileReader.read_bits(): cur=23, posi=2
+bit2num(): buf_head=0, nBits=18, nBytes=3
+bit2num(): buf[0]=07, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=07, ret=7
+bit2num(): buf[1]=80, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=80, ret=1920
+bit2num(): buf[2]=23, head_in_byte=0, tail_in_byte=1, nBits_in_byte=2, tmp=00, ret=7680
+MpegDecoder.read_sequence_header(): bit_rate=7680
+
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=23, cur=80, posi=2
+FileReader.rtrn(): return 23
+FileReader.rtrn(): cur=23, posi=3
+FileReader.read_bits(): cur=23, posi=3
+bit2num(): buf_head=2, nBits=1, nBytes=1
+bit2num(): buf[0]=23, head_in_byte=2, tail_in_byte=2, nBits_in_byte=1, tmp=20, ret=1
+MpegDecoder.read_sequence_header(): marker_bit=1
+
+FileReader.read_bits_as_num(): nBits=10
+FileReader.read_bits(): nBits=10, nBytes=2
+FileReader.read(): buf[0]=23, cur=80, posi=3
+FileReader.read(): buf[1]=80, cur=00, posi=3
+FileReader.rtrn(): return 80
+FileReader.rtrn(): cur=80, posi=5
+FileReader.read_bits(): cur=80, posi=5
+bit2num(): buf_head=3, nBits=10, nBytes=2
+bit2num(): buf[0]=23, head_in_byte=3, tail_in_byte=7, nBits_in_byte=5, tmp=03, ret=3
+bit2num(): buf[1]=80, head_in_byte=0, tail_in_byte=4, nBits_in_byte=5, tmp=80, ret=112
+MpegDecoder.read_sequence_header(): vbv_buffer_size=112
+
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=80, cur=00, posi=5
+FileReader.rtrn(): return 80
+FileReader.rtrn(): cur=80, posi=6
+FileReader.read_bits(): cur=80, posi=6
+bit2num(): buf_head=5, nBits=1, nBytes=1
+bit2num(): buf[0]=80, head_in_byte=5, tail_in_byte=5, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.read_sequence_header(): constrained_parameter_flag=0
+
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=80, cur=00, posi=6
+FileReader.rtrn(): return 80
+FileReader.rtrn(): cur=80, posi=7
+FileReader.read_bits(): cur=80, posi=7
+bit2num(): buf_head=6, nBits=1, nBytes=1
+bit2num(): buf[0]=80, head_in_byte=6, tail_in_byte=6, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.read_sequence_header(): load_intra_quantizer_matrix=0
+
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=80, cur=00, posi=7
+FileReader.read_bits(): cur=00, posi=0
+bit2num(): buf_head=7, nBits=1, nBytes=1
+bit2num(): buf[0]=80, head_in_byte=7, tail_in_byte=7, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.read_sequence_header(): load_non_intra_quantizer_matrix=0
+
+FileReader.read(): buf[0]=00, cur=00, posi=0
+FileReader.read(): buf[1]=00, cur=01, posi=0
+FileReader.read(): buf[2]=01, cur=B8, posi=0
+MpegDecoder.nextbits(): buf[0]=00
+MpegDecoder.nextbits(): buf[1]=00
+MpegDecoder.nextbits(): buf[2]=01
+bit2num(): buf_head=0, nBits=24, nBytes=3
+bit2num(): buf[0]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[1]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[2]=01, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=01, ret=1
+FileReader.rtrn(): return 01
+FileReader.rtrn(): return 00
+FileReader.rtrn(): return 00
+FileReader.rtrn(): cur=00, posi=0
+MpegDecoder.nextbits(): ret=1
+
+sequence_header_code done.
+
+FileReader.read(): buf[0]=00, cur=00, posi=0
+FileReader.read(): buf[1]=00, cur=01, posi=0
+FileReader.read(): buf[2]=01, cur=B8, posi=0
+FileReader.read(): buf[3]=B8, cur=00, posi=0
+MpegDecoder.nextbits(): buf[0]=00
+MpegDecoder.nextbits(): buf[1]=00
+MpegDecoder.nextbits(): buf[2]=01
+MpegDecoder.nextbits(): buf[3]=B8
+bit2num(): buf_head=0, nBits=32, nBytes=4
+bit2num(): buf[0]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[1]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[2]=01, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=01, ret=1
+bit2num(): buf[3]=B8, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=B8, ret=440
+FileReader.rtrn(): return B8
+FileReader.rtrn(): return 01
+FileReader.rtrn(): return 00
+FileReader.rtrn(): return 00
+FileReader.rtrn(): cur=00, posi=0
+MpegDecoder.nextbits(): ret=440
+
+group_start_code...
+
+FileReader.read_bits_as_num(): nBits=32
+FileReader.read_bits(): nBits=32, nBytes=4
+FileReader.read(): buf[0]=00, cur=00, posi=0
+FileReader.read(): buf[1]=00, cur=01, posi=0
+FileReader.read(): buf[2]=01, cur=B8, posi=0
+FileReader.read(): buf[3]=B8, cur=00, posi=0
+FileReader.read_bits(): cur=00, posi=0
+bit2num(): buf_head=0, nBits=32, nBytes=4
+bit2num(): buf[0]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[1]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[2]=01, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=01, ret=1
+bit2num(): buf[3]=B8, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=B8, ret=440
+MpegDecoder.read_group_start(): group_start_code=440
+
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=00, cur=08, posi=0
+FileReader.rtrn(): return 00
+FileReader.rtrn(): cur=00, posi=1
+FileReader.read_bits(): cur=00, posi=1
+bit2num(): buf_head=0, nBits=1, nBytes=1
+bit2num(): buf[0]=00, head_in_byte=0, tail_in_byte=0, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.read_group_start(): drop_frame_flag=0
+
+FileReader.read_bits_as_num(): nBits=5
+FileReader.read_bits(): nBits=5, nBytes=1
+FileReader.read(): buf[0]=00, cur=08, posi=1
+FileReader.rtrn(): return 00
+FileReader.rtrn(): cur=00, posi=6
+FileReader.read_bits(): cur=00, posi=6
+bit2num(): buf_head=1, nBits=5, nBytes=1
+bit2num(): buf[0]=00, head_in_byte=1, tail_in_byte=5, nBits_in_byte=5, tmp=00, ret=0
+MpegDecoder.read_group_start(): time_code_hours=0
+
+FileReader.read_bits_as_num(): nBits=6
+FileReader.read_bits(): nBits=6, nBytes=2
+FileReader.read(): buf[0]=00, cur=08, posi=6
+FileReader.read(): buf[1]=08, cur=00, posi=6
+FileReader.rtrn(): return 08
+FileReader.rtrn(): cur=08, posi=4
+FileReader.read_bits(): cur=08, posi=4
+bit2num(): buf_head=6, nBits=6, nBytes=2
+bit2num(): buf[0]=00, head_in_byte=6, tail_in_byte=7, nBits_in_byte=2, tmp=00, ret=0
+bit2num(): buf[1]=08, head_in_byte=0, tail_in_byte=3, nBits_in_byte=4, tmp=00, ret=0
+MpegDecoder.read_group_start(): time_code_minutes=0
+
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=08, cur=00, posi=4
+FileReader.rtrn(): return 08
+FileReader.rtrn(): cur=08, posi=5
+FileReader.read_bits(): cur=08, posi=5
+bit2num(): buf_head=4, nBits=1, nBytes=1
+bit2num(): buf[0]=08, head_in_byte=4, tail_in_byte=4, nBits_in_byte=1, tmp=08, ret=1
+MpegDecoder.read_group_start(): marker_bit=1
+
+FileReader.read_bits_as_num(): nBits=6
+FileReader.read_bits(): nBits=6, nBytes=2
+FileReader.read(): buf[0]=08, cur=00, posi=5
+FileReader.read(): buf[1]=00, cur=40, posi=5
+FileReader.rtrn(): return 00
+FileReader.rtrn(): cur=00, posi=3
+FileReader.read_bits(): cur=00, posi=3
+bit2num(): buf_head=5, nBits=6, nBytes=2
+bit2num(): buf[0]=08, head_in_byte=5, tail_in_byte=7, nBits_in_byte=3, tmp=00, ret=0
+bit2num(): buf[1]=00, head_in_byte=0, tail_in_byte=2, nBits_in_byte=3, tmp=00, ret=0
+MpegDecoder.read_group_start(): time_code_seconds=0
+
+FileReader.read_bits_as_num(): nBits=6
+FileReader.read_bits(): nBits=6, nBytes=2
+FileReader.read(): buf[0]=00, cur=40, posi=3
+FileReader.read(): buf[1]=40, cur=00, posi=3
+FileReader.rtrn(): return 40
+FileReader.rtrn(): cur=40, posi=1
+FileReader.read_bits(): cur=40, posi=1
+bit2num(): buf_head=3, nBits=6, nBytes=2
+bit2num(): buf[0]=00, head_in_byte=3, tail_in_byte=7, nBits_in_byte=5, tmp=00, ret=0
+bit2num(): buf[1]=40, head_in_byte=0, tail_in_byte=0, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.read_group_start(): time_code_pictures=0
+
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=40, cur=00, posi=1
+FileReader.rtrn(): return 40
+FileReader.rtrn(): cur=40, posi=2
+FileReader.read_bits(): cur=40, posi=2
+bit2num(): buf_head=1, nBits=1, nBytes=1
+bit2num(): buf[0]=40, head_in_byte=1, tail_in_byte=1, nBits_in_byte=1, tmp=40, ret=1
+MpegDecoder.read_group_start(): closed_gop=1
+
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=40, cur=00, posi=2
+FileReader.rtrn(): return 40
+FileReader.rtrn(): cur=40, posi=3
+FileReader.read_bits(): cur=40, posi=3
+bit2num(): buf_head=2, nBits=1, nBytes=1
+bit2num(): buf[0]=40, head_in_byte=2, tail_in_byte=2, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.read_group_start(): broken_link=0
+
+MpegDecoder.next_start_code(): not aligned.
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=40, cur=00, posi=3
+FileReader.rtrn(): return 40
+FileReader.rtrn(): cur=40, posi=4
+FileReader.read_bits(): cur=40, posi=4
+bit2num(): buf_head=3, nBits=1, nBytes=1
+bit2num(): buf[0]=40, head_in_byte=3, tail_in_byte=3, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.next_start_code(): advance one 0-bit.
+
+MpegDecoder.next_start_code(): not aligned.
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=40, cur=00, posi=4
+FileReader.rtrn(): return 40
+FileReader.rtrn(): cur=40, posi=5
+FileReader.read_bits(): cur=40, posi=5
+bit2num(): buf_head=4, nBits=1, nBytes=1
+bit2num(): buf[0]=40, head_in_byte=4, tail_in_byte=4, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.next_start_code(): advance one 0-bit.
+
+MpegDecoder.next_start_code(): not aligned.
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=40, cur=00, posi=5
+FileReader.rtrn(): return 40
+FileReader.rtrn(): cur=40, posi=6
+FileReader.read_bits(): cur=40, posi=6
+bit2num(): buf_head=5, nBits=1, nBytes=1
+bit2num(): buf[0]=40, head_in_byte=5, tail_in_byte=5, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.next_start_code(): advance one 0-bit.
+
+MpegDecoder.next_start_code(): not aligned.
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=40, cur=00, posi=6
+FileReader.rtrn(): return 40
+FileReader.rtrn(): cur=40, posi=7
+FileReader.read_bits(): cur=40, posi=7
+bit2num(): buf_head=6, nBits=1, nBytes=1
+bit2num(): buf[0]=40, head_in_byte=6, tail_in_byte=6, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.next_start_code(): advance one 0-bit.
+
+MpegDecoder.next_start_code(): not aligned.
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=40, cur=00, posi=7
+FileReader.read_bits(): cur=00, posi=0
+bit2num(): buf_head=7, nBits=1, nBytes=1
+bit2num(): buf[0]=40, head_in_byte=7, tail_in_byte=7, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.next_start_code(): advance one 0-bit.
+
+FileReader.read(): buf[0]=00, cur=00, posi=0
+FileReader.read(): buf[1]=00, cur=01, posi=0
+FileReader.read(): buf[2]=01, cur=00, posi=0
+MpegDecoder.nextbits(): buf[0]=00
+MpegDecoder.nextbits(): buf[1]=00
+MpegDecoder.nextbits(): buf[2]=01
+bit2num(): buf_head=0, nBits=24, nBytes=3
+bit2num(): buf[0]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[1]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[2]=01, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=01, ret=1
+FileReader.rtrn(): return 01
+FileReader.rtrn(): return 00
+FileReader.rtrn(): return 00
+FileReader.rtrn(): cur=00, posi=0
+MpegDecoder.nextbits(): ret=1
+
+group_start_code done.
+
+FileReader.read(): buf[0]=00, cur=00, posi=0
+FileReader.read(): buf[1]=00, cur=01, posi=0
+FileReader.read(): buf[2]=01, cur=00, posi=0
+FileReader.read(): buf[3]=00, cur=00, posi=0
+MpegDecoder.nextbits(): buf[0]=00
+MpegDecoder.nextbits(): buf[1]=00
+MpegDecoder.nextbits(): buf[2]=01
+MpegDecoder.nextbits(): buf[3]=00
+bit2num(): buf_head=0, nBits=32, nBytes=4
+bit2num(): buf[0]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[1]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[2]=01, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=01, ret=1
+bit2num(): buf[3]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=256
+FileReader.rtrn(): return 00
+FileReader.rtrn(): return 01
+FileReader.rtrn(): return 00
+FileReader.rtrn(): return 00
+FileReader.rtrn(): cur=00, posi=0
+MpegDecoder.nextbits(): ret=256
+
+picture_start_code...
+
+FileReader.read_bits_as_num(): nBits=32
+FileReader.read_bits(): nBits=32, nBytes=4
+FileReader.read(): buf[0]=00, cur=00, posi=0
+FileReader.read(): buf[1]=00, cur=01, posi=0
+FileReader.read(): buf[2]=01, cur=00, posi=0
+FileReader.read(): buf[3]=00, cur=00, posi=0
+FileReader.read_bits(): cur=00, posi=0
+bit2num(): buf_head=0, nBits=32, nBytes=4
+bit2num(): buf[0]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[1]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[2]=01, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=01, ret=1
+bit2num(): buf[3]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=256
+MpegDecoder.read_picture_start(): picture_start_code=256
+
+FileReader.read_bits_as_num(): nBits=10
+FileReader.read_bits(): nBits=10, nBytes=2
+FileReader.read(): buf[0]=00, cur=0D, posi=0
+FileReader.read(): buf[1]=0D, cur=BD, posi=0
+FileReader.rtrn(): return 0D
+FileReader.rtrn(): cur=0D, posi=2
+FileReader.read_bits(): cur=0D, posi=2
+bit2num(): buf_head=0, nBits=10, nBytes=2
+bit2num(): buf[0]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[1]=0D, head_in_byte=0, tail_in_byte=1, nBits_in_byte=2, tmp=00, ret=0
+MpegDecoder.read_picture_start(): temporal_reference=0
+
+FileReader.read_bits_as_num(): nBits=3
+FileReader.read_bits(): nBits=3, nBytes=1
+FileReader.read(): buf[0]=0D, cur=BD, posi=2
+FileReader.rtrn(): return 0D
+FileReader.rtrn(): cur=0D, posi=5
+FileReader.read_bits(): cur=0D, posi=5
+bit2num(): buf_head=2, nBits=3, nBytes=1
+bit2num(): buf[0]=0D, head_in_byte=2, tail_in_byte=4, nBits_in_byte=3, tmp=08, ret=1
+MpegDecoder.read_picture_start(): picture_coding_type=1
+
+FileReader.read_bits_as_num(): nBits=16
+FileReader.read_bits(): nBits=16, nBytes=3
+FileReader.read(): buf[0]=0D, cur=BD, posi=5
+FileReader.read(): buf[1]=BD, cur=D0, posi=5
+FileReader.read(): buf[2]=D0, cur=00, posi=5
+FileReader.rtrn(): return D0
+FileReader.rtrn(): cur=D0, posi=5
+FileReader.read_bits(): cur=D0, posi=5
+bit2num(): buf_head=5, nBits=16, nBytes=3
+bit2num(): buf[0]=0D, head_in_byte=5, tail_in_byte=7, nBits_in_byte=3, tmp=05, ret=5
+bit2num(): buf[1]=BD, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=BD, ret=1469
+bit2num(): buf[2]=D0, head_in_byte=0, tail_in_byte=4, nBits_in_byte=5, tmp=D0, ret=47034
+MpegDecoder.read_picture_start(): vbv_delay=47034
+
+bit2num(): buf_head=5, nBits=0, nBytes=1
+bit2num(): buf[0]=40, head_in_byte=5, tail_in_byte=4, nBits_in_byte=0, tmp=00, ret=0
+FileReader.rtrn(): cur=D0, posi=5
+MpegDecoder.nextbits(): ret=0
+
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=D0, cur=00, posi=5
+FileReader.rtrn(): return D0
+FileReader.rtrn(): cur=D0, posi=6
+FileReader.read_bits(): cur=D0, posi=6
+bit2num(): buf_head=5, nBits=1, nBytes=1
+bit2num(): buf[0]=D0, head_in_byte=5, tail_in_byte=5, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.read_picture_start(): extra_bit_picture=0
+
+MpegDecoder.next_start_code(): not aligned.
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=D0, cur=00, posi=6
+FileReader.rtrn(): return D0
+FileReader.rtrn(): cur=D0, posi=7
+FileReader.read_bits(): cur=D0, posi=7
+bit2num(): buf_head=6, nBits=1, nBytes=1
+bit2num(): buf[0]=D0, head_in_byte=6, tail_in_byte=6, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.next_start_code(): advance one 0-bit.
+
+MpegDecoder.next_start_code(): not aligned.
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=D0, cur=00, posi=7
+FileReader.read_bits(): cur=00, posi=0
+bit2num(): buf_head=7, nBits=1, nBytes=1
+bit2num(): buf[0]=D0, head_in_byte=7, tail_in_byte=7, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.next_start_code(): advance one 0-bit.
+
+FileReader.read(): buf[0]=00, cur=00, posi=0
+FileReader.read(): buf[1]=00, cur=01, posi=0
+FileReader.read(): buf[2]=01, cur=01, posi=0
+MpegDecoder.nextbits(): buf[0]=00
+MpegDecoder.nextbits(): buf[1]=00
+MpegDecoder.nextbits(): buf[2]=01
+bit2num(): buf_head=0, nBits=24, nBytes=3
+bit2num(): buf[0]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[1]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[2]=01, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=01, ret=1
+FileReader.rtrn(): return 01
+FileReader.rtrn(): return 00
+FileReader.rtrn(): return 00
+FileReader.rtrn(): cur=00, posi=0
+MpegDecoder.nextbits(): ret=1
+
+picture_start_code done.
+
+FileReader.read(): buf[0]=00, cur=00, posi=0
+FileReader.read(): buf[1]=00, cur=01, posi=0
+FileReader.read(): buf[2]=01, cur=01, posi=0
+FileReader.read(): buf[3]=01, cur=3B, posi=0
+MpegDecoder.nextbits(): buf[0]=00
+MpegDecoder.nextbits(): buf[1]=00
+MpegDecoder.nextbits(): buf[2]=01
+MpegDecoder.nextbits(): buf[3]=01
+bit2num(): buf_head=0, nBits=32, nBytes=4
+bit2num(): buf[0]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[1]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[2]=01, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=01, ret=1
+bit2num(): buf[3]=01, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=01, ret=257
+FileReader.rtrn(): return 01
+FileReader.rtrn(): return 01
+FileReader.rtrn(): return 00
+FileReader.rtrn(): return 00
+FileReader.rtrn(): cur=00, posi=0
+MpegDecoder.nextbits(): ret=257
+
+slice_start_code...
+
+FileReader.read_bits_as_num(): nBits=32
+FileReader.read_bits(): nBits=32, nBytes=4
+FileReader.read(): buf[0]=00, cur=00, posi=0
+FileReader.read(): buf[1]=00, cur=01, posi=0
+FileReader.read(): buf[2]=01, cur=01, posi=0
+FileReader.read(): buf[3]=01, cur=3B, posi=0
+FileReader.read_bits(): cur=3B, posi=0
+bit2num(): buf_head=0, nBits=32, nBytes=4
+bit2num(): buf[0]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[1]=00, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=00, ret=0
+bit2num(): buf[2]=01, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=01, ret=1
+bit2num(): buf[3]=01, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=01, ret=257
+MpegDecoder.read_slice_start(): slice_start_code=257
+
+FileReader.read_bits_as_num(): nBits=5
+FileReader.read_bits(): nBits=5, nBytes=1
+FileReader.read(): buf[0]=3B, cur=F8, posi=0
+FileReader.rtrn(): return 3B
+FileReader.rtrn(): cur=3B, posi=5
+FileReader.read_bits(): cur=3B, posi=5
+bit2num(): buf_head=0, nBits=5, nBytes=1
+bit2num(): buf[0]=3B, head_in_byte=0, tail_in_byte=4, nBits_in_byte=5, tmp=38, ret=7
+MpegDecoder.read_slice_start(): quantizer_scale=7
+
+bit2num(): buf_head=5, nBits=0, nBytes=1
+bit2num(): buf[0]=10, head_in_byte=5, tail_in_byte=4, nBits_in_byte=0, tmp=00, ret=0
+FileReader.rtrn(): cur=3B, posi=5
+MpegDecoder.nextbits(): ret=0
+
+FileReader.read_bits_as_num(): nBits=1
+FileReader.read_bits(): nBits=1, nBytes=1
+FileReader.read(): buf[0]=3B, cur=F8, posi=5
+FileReader.rtrn(): return 3B
+FileReader.rtrn(): cur=3B, posi=6
+FileReader.read_bits(): cur=3B, posi=6
+bit2num(): buf_head=5, nBits=1, nBytes=1
+bit2num(): buf[0]=3B, head_in_byte=5, tail_in_byte=5, nBits_in_byte=1, tmp=00, ret=0
+MpegDecoder.read_slice_start(): extra_bit_slice=0
+
+FileReader.read(): buf[0]=3B, cur=F8, posi=6
+FileReader.read(): buf[1]=F8, cur=C0, posi=6
+MpegDecoder.nextbits(): buf[0]=3B
+MpegDecoder.nextbits(): buf[1]=F8
+bit2num(): buf_head=6, nBits=16, nBytes=3
+bit2num(): buf[0]=3B, head_in_byte=6, tail_in_byte=7, nBits_in_byte=2, tmp=03, ret=3
+bit2num(): buf[1]=F8, head_in_byte=0, tail_in_byte=7, nBits_in_byte=8, tmp=F8, ret=1016
+bit2num(): buf[2]=FF, head_in_byte=0, tail_in_byte=5, nBits_in_byte=6, tmp=FC, ret=65087
+FileReader.rtrn(): return F8
+FileReader.rtrn(): return 3B
+FileReader.rtrn(): cur=3B, posi=6
+MpegDecoder.nextbits(): ret=65087
+
+MpegDecoder.read_slice_start(): read_macroblock...
+
+FileReader.read(): buf[0]=3B, cur=F8, posi=6
+MpegDecoder.nextbits(): buf[0]=3B
+bit2num(): buf_head=6, nBits=8, nBytes=2
+bit2num(): buf[0]=3B, head_in_byte=6, tail_in_byte=7, nBits_in_byte=2, tmp=03, ret=3
+bit2num(): buf[1]=C9, head_in_byte=0, tail_in_byte=5, nBits_in_byte=6, tmp=C8, ret=242
+FileReader.rtrn(): return 3B
+FileReader.rtrn(): cur=3B, posi=6
+MpegDecoder.nextbits(): ret=242
+
+FileReader.read(): buf[0]=3B, cur=F8, posi=6
+MpegDecoder.nextbits(): buf[0]=3B
+bit2num(): buf_head=6, nBits=8, nBytes=2
+bit2num(): buf[0]=3B, head_in_byte=6, tail_in_byte=7, nBits_in_byte=2, tmp=03, ret=3
+bit2num(): buf[1]=C9, head_in_byte=0, tail_in_byte=5, nBits_in_byte=6, tmp=C8, ret=242
+FileReader.rtrn(): return 3B
+FileReader.rtrn(): cur=3B, posi=6
+MpegDecoder.nextbits(): ret=242
+
