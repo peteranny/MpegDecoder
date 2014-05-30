@@ -12,3 +12,6 @@ ans:
 git:
 	git add *
 	git commit -m "$(MSG)"
+	git remote add origin http://github.com/peteranny/MpegDecoder.git
+	git push master
+
