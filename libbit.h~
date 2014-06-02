@@ -2,7 +2,7 @@
 #include <string>
 
 #ifndef EXIT
-#define EXIT(msg) {puts(msg);exit(0);}
+#define EXIT(msg) {fputs(msg, stderr);exit(0);}
 #endif
 
 #ifndef LIBBIT

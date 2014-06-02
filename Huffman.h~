@@ -42,14 +42,14 @@ class Huffman{
 		void print_codewords(){
 			for(int i = 0; i <= nSymbols + 1; i++){
 				if(codeword[i] == -1 || codeword[i] == nCodewords){
-					//fprintf(stderr, "Huffman.print_codewords(): i=%2d,       codeword=%4d, symbol=%s\n", i, codeword[i], (i == 0)? "START": "END");
+					fprintf(stderr, "Huffman.print_codewords(): i=%2d,       codeword=%4d, symbol=%s\n", i, codeword[i], (i == 0)? "START": "END");
 				}
 				else{
-					//fprintf(stderr, "Huffman.print_codewords(): i=%2d, l=%2d, codeword=%4d=", i, codelen[i], codeword[i]);
-					//fprintb(stderr, codeword[i], maxLen);
-					//fprintf(stderr, "(");
-					//fprintb(stderr, codeword[i] >> (maxLen - codelen[i]), codelen[i]);
-					//fprintf(stderr, "), symbol=%02X(%d)\n", symbol[i], symbol[i]);
+					fprintf(stderr, "Huffman.print_codewords(): i=%2d, l=%2d, codeword=%4d=", i, codelen[i], codeword[i]);
+					fprintb(stderr, codeword[i], maxLen);
+					fprintf(stderr, "(");
+					fprintb(stderr, codeword[i] >> (maxLen - codelen[i]), codelen[i]);
+					fprintf(stderr, "), symbol=%02X(%d)\n", symbol[i], symbol[i]);
 				}
 			}
 		}
@@ -196,12 +196,12 @@ class Huffman{
 			return;
 		}
 		unsigned char decode(int codeword){
-			//fprintf(stderr, "Huffman.decode(): codeword=%d=", codeword);
-			//fprintb(stderr, codeword, maxLen);
+			fprintf(stderr, "Huffman.decode(): codeword=%d=", codeword);
+			fprintb(stderr, codeword, maxLen);
 			int index = hash[codeword];
 			if(index == 0 || index == nSymbols + 1) EXIT("Huffman.decode(): error");
 			unsigned char symbol = this->symbol[index];
-			//fprintf(stderr, ", symbol=%02X(%d)\n", symbol, symbol);
+			fprintf(stderr, ", symbol=%02X(%d)\n", symbol, symbol);
 			return symbol;
 		}
 };

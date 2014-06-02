@@ -58,7 +58,7 @@ int bit2num(int nBits, unsigned char *buf, int buf_head){
 	// bit(0)...bit(7)
 	// byte(0)...byte(n - 1)
 	int nBytes = (buf_head + nBits - 1)/8 + 1;
-	fprintf(stderr, "bit2num(): buf_head=%d, nBits=%d, nBytes=%d\n", buf_head, nBits, nBytes);
+	//fprintf(stderr, "bit2num(): buf_head=%d, nBits=%d, nBytes=%d\n", buf_head, nBits, nBytes);
 	int ret = 0;
 	for(int i = 0; i < nBytes; i++){
 		int head_in_byte = (i == 0)? buf_head: 0;
@@ -70,7 +70,7 @@ int bit2num(int nBits, unsigned char *buf, int buf_head){
 		tmp &= ((unsigned char)0xFF) << (7 - tail_in_byte);
 		//fprintf(stderr, "bit2num(): i=%d, tmp=%02X\n", i, tmp);
 		ret = ret*pow(2, nBits_in_byte) + (int)(tmp >> (7 - tail_in_byte));
-		fprintf(stderr, "bit2num(): buf[%d]=%02X, head_in_byte=%d, tail_in_byte=%d, nBits_in_byte=%d, tmp=%02X, ret=%d\n", i, buf[i], head_in_byte, tail_in_byte, nBits_in_byte, tmp, ret);
+		//fprintf(stderr, "bit2num(): buf[%d]=%02X, head_in_byte=%d, tail_in_byte=%d, nBits_in_byte=%d, tmp=%02X, ret=%d\n", i, buf[i], head_in_byte, tail_in_byte, nBits_in_byte, tmp, ret);
 	}
 	return ret;
 	/*
@@ -171,11 +171,11 @@ void fprintb(FILE *fp, int num, int nBits){
 	if(num >= pow(2, nBits)) nBits = floor(log2(num)) + 1;
 	for(int i = pow(2, nBits - 1); i >= 1; i /= 2){
 		if(num >= i){
-			fprintf(fp, "1");
+			//fprintf(fp, "1");
 			num -= i;
 		}
 		else{
-			fprintf(fp, "0");
+			//fprintf(fp, "0");
 		}
 	}
 	return;

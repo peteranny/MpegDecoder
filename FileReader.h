@@ -49,7 +49,7 @@ void write2file(FILE *file, int orderType, unsigned char *buf, int size){
 		void rtrn(int nBytes, unsigned char *buf){//unsigned char curByte){
 			int i;
 			for(i = nBytes - 1; i >= 0; i--){
-				fprintf(stderr, "FileReader.rtrn(): return %02X\n", buf[i]);
+				//fprintf(stderr, "FileReader.rtrn(): return %02X\n", buf[i]);
 				if(filebuflen == FILEBUFSIZE - 1){
 					EXIT("FileReader.rtrn() error.");
 				}
@@ -62,7 +62,7 @@ void write2file(FILE *file, int orderType, unsigned char *buf, int size){
 				cur_byte = buf[i];
 			}
 			//cur_byte = curByte;
-			fprintf(stderr, "FileReader.rtrn(): cur=%02X, posi=%d\n", cur_byte, cur_posi_in_byte);
+			//fprintf(stderr, "FileReader.rtrn(): cur=%02X, posi=%d\n", cur_byte, cur_posi_in_byte);
 			return;
 		}
 
@@ -98,14 +98,14 @@ void write2file(FILE *file, int orderType, unsigned char *buf, int size){
 					}
 					*/
 				}
-				fprintf(stderr, "FileReader.read(): buf[%d]=%02X, cur=%02X, posi=%d\n", i, buf[i], cur_byte, cur_posi_in_byte);
+				//fprintf(stderr, "FileReader.read(): buf[%d]=%02X, cur=%02X, posi=%d\n", i, buf[i], cur_byte, cur_posi_in_byte);
 			}
 			return true;
 		}
 
 		int read_bits(int nBits, unsigned char *buf){
 			int nBytes = (nBits > 0)? (cur_posi_in_byte + nBits - 1)/8 + 1: 0;
-			fprintf(stderr, "FileReader.read_bits(): nBits=%d, nBytes=%d\n", nBits, nBytes);
+			//fprintf(stderr, "FileReader.read_bits(): nBits=%d, nBytes=%d\n", nBits, nBytes);
 			//if(size < nBytes_more) EXIT("FileReader.read_bits(): error.");
 			if(!read(nBytes, buf)) return false;
 
@@ -119,14 +119,14 @@ void write2file(FILE *file, int orderType, unsigned char *buf, int size){
 			}
 			//buf[nBytes_more] &= ((unsigned char)0xFF) << (cur_posi_in_byte);
 
-			fprintf(stderr, "FileReader.read_bits(): cur=%02X, posi=%d\n", cur_byte, cur_posi_in_byte);
+			if(frame_i >= 119) fprintf(stderr, "FileReader.read_bits(): cur=%02X, posi=%d\n", cur_byte, cur_posi_in_byte);
 			return ret; // return starting position in buf[0]
 		}
 
 		int read_bits_as_num(int nBits){
 			int nBytes = (nBits + 7)/8 + 1;
 			unsigned char buf[nBytes];
-			fprintf(stderr, "FileReader.read_bits_as_num(): nBits=%d\n", nBits);
+			//fprintf(stderr, "FileReader.read_bits_as_num(): nBits=%d\n", nBits);
 			int buf_head = read_bits(nBits, buf);
 			int ret = bit2num(nBits, buf, buf_head);
 			return ret;
