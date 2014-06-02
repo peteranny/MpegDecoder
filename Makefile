@@ -1,6 +1,6 @@
 IN=../MPEG/I_ONLY.M1V
 all:
-	g++ -o main main.cpp
+	g++ -g -o main main.cpp
 	make run
 run:
 	./main $(IN)

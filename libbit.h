@@ -1,4 +1,9 @@
 #include <cmath>
+#include <string>
+
+#ifndef EXIT
+#define EXIT(msg) {puts(msg);exit(0);}
+#endif
 
 #ifndef LIBBIT
 #define LIBBIT
@@ -152,6 +157,16 @@ void bit_cat(unsigned char *des, unsigned char src1, unsigned char src2, int sta
 	return;
 }
 */
+int parsebit(const char *bit_str){
+	int ret = 0;
+	for(int j = 0; j < strlen(bit_str); j++){
+		int bit = bit_str[j] - '0';
+		if(bit != 0 && bit != 1) EXIT("parsebit(): error.");
+		ret = ret*2 + bit;
+	}
+	return ret;
+}
+
 void fprintb(FILE *fp, int num, int nBits){
 	if(num >= pow(2, nBits)) nBits = floor(log2(num)) + 1;
 	for(int i = pow(2, nBits - 1); i >= 1; i /= 2){
