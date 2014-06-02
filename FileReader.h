@@ -1,6 +1,6 @@
 #include <cstdio>
 #ifndef EXIT
-#define EXIT(msg) {puts(msg);exit(0);}
+#define EXIT(msg) {fputs(msg, stderr);exit(0);}
 #endif
 
 #ifndef FILEREADER
@@ -104,7 +104,7 @@ void write2file(FILE *file, int orderType, unsigned char *buf, int size){
 		}
 
 		int read_bits(int nBits, unsigned char *buf){
-			int nBytes = (cur_posi_in_byte + nBits - 1)/8 + 1;
+			int nBytes = (nBits > 0)? (cur_posi_in_byte + nBits - 1)/8 + 1: 0;
 			fprintf(stderr, "FileReader.read_bits(): nBits=%d, nBytes=%d\n", nBits, nBytes);
 			//if(size < nBytes_more) EXIT("FileReader.read_bits(): error.");
 			if(!read(nBytes, buf)) return false;

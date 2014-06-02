@@ -8,7 +8,7 @@
 //#include "libbmp.h"
 //#include "err.h"
 #ifndef EXIT
-#define EXIT(msg) {puts(msg);exit(0);}
+#define EXIT(msg) {fputs(msg, stderr);exit(0);}
 #endif
 
 #define PICTURE_START_CODE   0x00000100
@@ -229,10 +229,11 @@ class MpegDecoder{
 			int extra_bit_slice = mpegFile->read_bits_as_num(1);
 			fprintf(stderr, "MpegDecoder.read_slice_start(): extra_bit_slice=%d\n\n", extra_bit_slice);
 
+			int i = 1;
 			while(nextbits(23) != 0){ // b00000000000000000000000
-				fprintf(stderr, "MpegDecoder.read_slice_start(): read_macroblock...\n\n");
+				fprintf(stderr, "MpegDecoder.read_slice_start(): read_macroblock... i=%d\n\n", i);
 				read_macroblock();
-				fprintf(stderr, "MpegDecoder.read_slice_start(): read_macroblock done.\n\n");
+				fprintf(stderr, "MpegDecoder.read_slice_start(): read_macroblock done. i=%d\n\n", i++);
 			}
 			next_start_code();
 
@@ -338,7 +339,6 @@ class MpegDecoder{
 			fprintf(stderr, "MpegDecoder.read_macroblock(): macroblock_motion_backward=%d\n", macroblock_motion_backward);
 			fprintf(stderr, "MpegDecoder.read_macroblock(): macroblock_pattern=%d\n", macroblock_pattern);
 			fprintf(stderr, "MpegDecoder.read_macroblock(): macroblock_intra=%d\n", macroblock_intra);
-			fprintf(stderr, "MpegDecoder.read_macroblock(): macroblock_type=%d\n", macroblock_type);
 			fprintf(stderr, "\n");
 
 			int quantizer_scale;
@@ -377,8 +377,11 @@ class MpegDecoder{
 				read_block(i);
 				fprintf(stderr, "MpegDecoder.read_macroblock(): read_block(%d) done.\n\n", i);
 			}
-			// TODO: another huffman
-			exit(0);
+
+			if(picture_coding_type == 4){
+				int end_of_macroblock = mpegFile->read_bits_as_num(1);
+				if(end_of_macroblock != 1) EXIT("MpegDecoder.read_macroblock(): end_of_macroblock.");
+			}
 			return;
 		}
 	private:
@@ -527,8 +530,10 @@ class MpegDecoder{
 						int dct_dc_size_luminance = dct_dc_size_luminance_huff->decode(nextbits(7));
 						mpegFile->read_bits_as_num(dct_dc_size_luminance_huff->get_codelen(dct_dc_size_luminance));
 						fprintf(stderr, "MpegDecoder.read_macroblock(): dct_dc_size_luminance=%d\n\n", dct_dc_size_luminance);
-						int dct_dc_differential_luminance = mpegFile->read_bits_as_num(dct_dc_size_luminance);
-						fprintf(stderr, "MpegDecoder.read_macroblock(): dct_dc_differential_luminance=%d\n\n", dct_dc_differential_luminance);
+						if(dct_dc_size_luminance > 0){
+							int dct_dc_differential_luminance = mpegFile->read_bits_as_num(dct_dc_size_luminance);
+							fprintf(stderr, "MpegDecoder.read_macroblock(): dct_dc_differential_luminance=%d\n\n", dct_dc_differential_luminance);
+						}
 						// dct_zz
 					}
 					else{
@@ -551,8 +556,10 @@ class MpegDecoder{
 						int dct_dc_size_chrominance = dct_dc_size_chrominance_huff->decode(nextbits(8));
 						mpegFile->read_bits_as_num(dct_dc_size_chrominance_huff->get_codelen(dct_dc_size_chrominance));
 						fprintf(stderr, "MpegDecoder.read_macroblock(): dct_dc_size_chrominance=%d\n\n", dct_dc_size_chrominance);
-						int dct_dc_differential_chrominance = mpegFile->read_bits_as_num(dct_dc_size_chrominance);
-						fprintf(stderr, "MpegDecoder.read_macroblock(): dct_dc_differential_chrominance=%d\n\n", dct_dc_differential_chrominance);
+						if(dct_dc_size_chrominance > 0){
+							int dct_dc_differential_chrominance = mpegFile->read_bits_as_num(dct_dc_size_chrominance);
+							fprintf(stderr, "MpegDecoder.read_macroblock(): dct_dc_differential_chrominance=%d\n\n", dct_dc_differential_chrominance);
+						}
 						// dct_zz
 					}
 				}
