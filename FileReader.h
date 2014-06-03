@@ -12,7 +12,11 @@ class FileReader{
 		int cur_posi_in_byte;
 
 	public:
+		FileReader(){}
 		FileReader(const char *filename){
+			set_filename(filename);
+		}
+		void set_filename(const char *filename){
 			file = fopen(filename, "rb");
 			if(!file) EXIT("FileReader() error.");
 			read(1, &cur_byte);
@@ -98,7 +102,7 @@ void write2file(FILE *file, int orderType, unsigned char *buf, int size){
 					}
 					*/
 				}
-				//fprintf(stderr, "FileReader.read(): buf[%d]=%02X, cur=%02X, posi=%d\n", i, buf[i], cur_byte, cur_posi_in_byte);
+				fprintf(stderr, "FileReader.read(): buf[%d]=%02X, cur=%02X, posi=%d\n", i, buf[i], cur_byte, cur_posi_in_byte);
 			}
 			return true;
 		}
