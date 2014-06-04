@@ -1,7 +1,10 @@
 #include <cstdio>
 #ifndef EXIT
-#define EXIT(msg) {puts(msg);exit(0);}
+#define EXIT(msg) {fputs(msg, stderr);exit(0);}
 #endif
+
+#ifndef FILEREADER
+#define FILEREADER
 class FileReader{
 	private:
 		FILE *file;
@@ -9,7 +12,11 @@ class FileReader{
 		int cur_posi_in_byte;
 
 	public:
+		FileReader(){}
 		FileReader(const char *filename){
+			set_filename(filename);
+		}
+		void set_filename(const char *filename){
 			file = fopen(filename, "rb");
 			if(!file) EXIT("FileReader() error.");
 			read(1, &cur_byte);
@@ -46,7 +53,7 @@ void write2file(FILE *file, int orderType, unsigned char *buf, int size){
 		void rtrn(int nBytes, unsigned char *buf){//unsigned char curByte){
 			int i;
 			for(i = nBytes - 1; i >= 0; i--){
-				printf("FileReader.rtrn(): return %02X\n", buf[i]);
+				//fprintf(stderr, "FileReader.rtrn(): return %02X\n", buf[i]);
 				if(filebuflen == FILEBUFSIZE - 1){
 					EXIT("FileReader.rtrn() error.");
 				}
@@ -54,12 +61,12 @@ void write2file(FILE *file, int orderType, unsigned char *buf, int size){
 					filebuf[filebuf_head] = cur_byte;
 					filebuf_head = (filebuf_head + 1)%FILEBUFSIZE;
 					filebuflen++;
-		//printf("retn2file : retnSize=%d, filebuf=", size);int j;for(j=filebuf_head-filebuflen;j<filebuf_head;j++)printf("%02X",filebuf[j]);printf(", i=%d, len=%d\n", filebuf_head, filebuflen);
+		//fprintf(stderr, "retn2file : retnSize=%d, filebuf=", size);int j;for(j=filebuf_head-filebuflen;j<filebuf_head;j++)fprintf(stderr, "%02X",filebuf[j]);fprintf(stderr, ", i=%d, len=%d\n", filebuf_head, filebuflen);
 				}
 				cur_byte = buf[i];
 			}
 			//cur_byte = curByte;
-			printf("FileReader.rtrn(): cur=%02X, posi=%d\n", cur_byte, cur_posi_in_byte);
+			//fprintf(stderr, "FileReader.rtrn(): cur=%02X, posi=%d\n", cur_byte, cur_posi_in_byte);
 			return;
 		}
 
@@ -78,15 +85,15 @@ void write2file(FILE *file, int orderType, unsigned char *buf, int size){
 				else{
 					cur_byte = fgetc(file);
 					if(feof(file)) return false;
-					//printf("read4mfile: fetch %02X\n", buf[i]);
+					//fprintf(stderr, "read4mfile: fetch %02X\n", buf[i]);
 					/*
 					if(rmFF00){
 						// look ahead
 						if(buf[i] == 0xFF){
-							//printf("read4mfile: detect 0xFF\n");
+							//fprintf(stderr, "read4mfile: detect 0xFF\n");
 							unsigned char next = fgetc(file);
 							if(next == 0x00){ // discard
-								//printf("read4mfile: detect next byte=0x00\n");
+								//fprintf(stderr, "read4mfile: detect next byte=0x00\n");
 							}
 							else{
 								rtrn(&next, 1);
@@ -95,14 +102,14 @@ void write2file(FILE *file, int orderType, unsigned char *buf, int size){
 					}
 					*/
 				}
-				printf("FileReader.read(): buf[%d]=%02X, cur=%02X, posi=%d\n", i, buf[i], cur_byte, cur_posi_in_byte);
+				fprintf(stderr, "FileReader.read(): buf[%d]=%02X, cur=%02X, posi=%d\n", i, buf[i], cur_byte, cur_posi_in_byte);
 			}
 			return true;
 		}
 
 		int read_bits(int nBits, unsigned char *buf){
-			int nBytes = (cur_posi_in_byte + nBits - 1)/8 + 1;
-			printf("FileReader.read_bits(): nBits=%d, nBytes=%d\n", nBits, nBytes);
+			int nBytes = (nBits > 0)? (cur_posi_in_byte + nBits - 1)/8 + 1: 0;
+			//fprintf(stderr, "FileReader.read_bits(): nBits=%d, nBytes=%d\n", nBits, nBytes);
 			//if(size < nBytes_more) EXIT("FileReader.read_bits(): error.");
 			if(!read(nBytes, buf)) return false;
 
@@ -116,14 +123,14 @@ void write2file(FILE *file, int orderType, unsigned char *buf, int size){
 			}
 			//buf[nBytes_more] &= ((unsigned char)0xFF) << (cur_posi_in_byte);
 
-			printf("FileReader.read_bits(): cur=%02X, posi=%d\n", cur_byte, cur_posi_in_byte);
+			if(frame_i >= 119) fprintf(stderr, "FileReader.read_bits(): cur=%02X, posi=%d\n", cur_byte, cur_posi_in_byte);
 			return ret; // return starting position in buf[0]
 		}
 
 		int read_bits_as_num(int nBits){
 			int nBytes = (nBits + 7)/8 + 1;
 			unsigned char buf[nBytes];
-			printf("FileReader.read_bits_as_num(): nBits=%d\n", nBits);
+			//fprintf(stderr, "FileReader.read_bits_as_num(): nBits=%d\n", nBits);
 			int buf_head = read_bits(nBits, buf);
 			int ret = bit2num(nBits, buf, buf_head);
 			return ret;
@@ -139,7 +146,7 @@ void read4mfile_skip_ff00(FILE *file, unsigned char *byte, int dist, int rmFF00)
 		*byte = filebuf[filebuf_head];
 		filebuflen -= dist;
 		if(filebuflen < 0) EXIT("read4mfile_skip : error");
-		//printf("read4mfile_skip: fetch %02X\n", *byte);
+		//fprintf(stderr, "read4mfile_skip: fetch %02X\n", *byte);
 	}
 	else{
 		int nByte2fetch = dist - filebuflen;
@@ -156,4 +163,5 @@ void read4mfile_skip(FILE *file, unsigned char *byte, int dist){
 }
 */
 };
+#endif
 
