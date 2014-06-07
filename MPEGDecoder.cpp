@@ -1896,14 +1896,8 @@ public:
 			this->lastImage = this->nextImage;
 			imageRGBTransform(this->lastImage);
 			outputBMP(this->lastImage);
-			static int kk = 0;
-if(kk++ == 1){
-		for(int i = 0; i < this->verticalSize; i++) for(int j = 0; j < horizontalSize; j++){
-			fprintf(stderr, "frame[%d][%d] %d %d %d %d %d %d\n", i, j, this->lastImage[i][j].Y, this->lastImage[i][j].Cb, this->lastImage[i][j].Cr, this->lastImage[i][j].R, this->lastImage[i][j].G, this->lastImage[i][j].B); 
 		}
-		exit(0);
-		}
-		
+
 		// Decode picture
 		do{
 			slice();
@@ -1913,8 +1907,6 @@ if(kk++ == 1){
 		if(this->pictureCodingType == I_FRAME || this->pictureCodingType == P_FRAME){
 			this->lastImage = this->nextImage;
 			this->nextImage = this->image;
-	}
-
 		}
 		else if(this->pictureCodingType == B_FRAME){
 			imageRGBTransform(this->image);
@@ -1932,7 +1924,6 @@ if(kk++ == 1){
 		for(int y = 0; y < this->verticalSize; y ++){
 			for(int x = 0; x < this->horizontalSize; x ++){
 				img[y][x].RGBTrans();
-				//fprintf(stderr, "frame %d %d %d %d %d %d\n", img[y][x].Y, img[y][x].Cb, img[y][x].Cr, img[y][x].R, img[y][x].G, img[y][x].B);
 			}
 		}
 	}
@@ -2314,6 +2305,7 @@ if(kk++ == 1){
 						nonIntraBlockBDecoding(i);
 					}
 			}
+
 		}
 		
 		if(this->pictureCodingType == D_FRAME){
@@ -2492,6 +2484,7 @@ if(kk++ == 1){
 	unsigned int dctDcDifferentialChrominance;
 	int dctZZ[64];
 	void block(int index){
+
 		blockArrayInitialize(this->dctZZ);
 		int k = 0, run, level;
 		//printf("\nblock %d\n", index);
@@ -2532,17 +2525,24 @@ if(kk++ == 1){
 				dctZZ[k] = level;
 				//printf("dctCoeffFirst run: %d, level: %d\n", run, level);
 			}
+
 			if(this->pictureCodingType != 4){
 				while(nextBits(2, true) != 0x2){
+		clock_t t1 = clock();
 					readRunLevel(run, level);
 					k += (run + 1);
 					dctZZ[k] = level;
 					//printf("dctCoeffNext run: %d, level: %d\n", run, level);
+		clock_t t2 = clock();
+		static int kk = 0;
+		fprintf(stderr, "%d\n", t2 - t1);
+		if(kk++ == 2) exit(0);
 				}
 				unsigned int endOfBlock = nextBits(2);
 				//printf("EOB\n");
 			}
 		}
+
 	}
 	
 	void blockArrayInitialize(int array[]){
@@ -2740,14 +2740,8 @@ if(kk++ == 1){
 					for(int n = 0; n < 8; n ++){
 						k = this->scan.read(m, n);
 						dctRecon.write(m, n, (2 * this->dctZZ[k] * signedQuantizerScale * this->intraQuantizerTable.read(m, n)) / 16);
-					//fprintf(stderr, "vvv %d %d %d\n", dctZZ[k], signedQuantizerScale, this->intraQuantizerTable.read(m, n));
-						//fprintf(stderr, "%d %d : %d", m, n, dctRecon.read(m,n));//TODO
-						//fprintf(stderr, "(%d)(%d)", dctRecon.read(m,n)&1==0,(dctRecon.read(m,n)&1)==0);
 						if(dctRecon.read(m, n) & 1 == 0){
-						//fprintf(stderr, "!!!");
-						fprintf(stderr, "- %d",sign(dctRecon.read(m,n)));
 							dctRecon.write(m, n, dctRecon.read(m, n) - sign(dctRecon.read(m, n))); 
-						fprintf(stderr, " = %d", dctRecon.read(m,n));//TODO
 						}
 						if(dctRecon.read(m, n) > 2047){
 							dctRecon.write(m, n, 2047);
@@ -2755,11 +2749,9 @@ if(kk++ == 1){
 						if(dctRecon.read(m, n) < -2048){
 							dctRecon.write(m, n, -2048); 
 						}
-						//fprintf(stderr, "\n");
 					}
 				}
 
-				//TODO
 				dctRecon.write(0, 0, this->dctZZ[0] * 8);
 				if(this->macroblockAddress - this->pastIntraAddress > 1){
 					//printf("this->macroblockAddress - this->pastIntraAddress > 1\n");
@@ -2778,12 +2770,8 @@ if(kk++ == 1){
 					for(int n = 0; n < 8; n ++){
 						k = this->scan.read(m, n);
 						dctRecon.write(m, n, (this->dctZZ[k] * signedQuantizerScale * this->intraQuantizerTable.read(m, n)) >> 3);
-					//fprintf(stderr, "vvv %d %d %d\n", dctZZ[k], signedQuantizerScale, this->intraQuantizerTable.read(m, n));
-						//fprintf(stderr, "%d %d : %d", m, n, dctRecon.read(m,n));//TODO
 						if(dctRecon.read(m, n) & 1 == 0){
-						fprintf(stderr, "- %d",sign(dctRecon.read(m,n)));
 							dctRecon.write(m, n, dctRecon.read(m, n) - sign(dctRecon.read(m, n))); 
-						fprintf(stderr, " = %d", dctRecon.read(m,n));//TODO
 						}
 						if(dctRecon.read(m, n) > 2047){
 							dctRecon.write(m, n, 2047);
@@ -2791,7 +2779,6 @@ if(kk++ == 1){
 						if(dctRecon.read(m, n) < -2048){
 							dctRecon.write(m, n, -2048); 
 						}
-						//fprintf(stderr, "\n");
 					}
 				}
 
@@ -2853,10 +2840,6 @@ if(kk++ == 1){
 		dctRecon.IDCT();
 
 		dctRecon.positiveCells();
-		dctRecon.print();
-//		static int kk = 0;
-//				fprintf(stderr, "kk = %d\n", kk);
-//		if(kk++ == 100) exit(0);
 
 		putImagePixels(index, dctRecon);
 	}
@@ -3751,13 +3734,9 @@ if(kk++ == 1){
 	}
 	
 	void putImagePixels(int index, Block &dctRecon){
-						static int kk = 0;
-
-//				fprintf(stderr, "mbrow=%d, mbh=%d, mbcolumn=%d, mbw=%d\n", mbRow, mbHeight, mbColumn, mbWidth);
 		unsigned int horizontalPixelIndex;
 		unsigned int verticalPixelIndex;
 		
-				//fprintf(stderr, "%d\n", index);
 		switch(index){
 			case 0:
 			case 1:
@@ -3767,12 +3746,9 @@ if(kk++ == 1){
 					for(int n = 0; n < 8; n ++){
 						horizontalPixelIndex = (this->mbColumn << 4) + ((index & 1) << 3) + n;
 						verticalPixelIndex = (this->mbRow << 4) + ((index >> 1) << 3) + m;
-						//TODO
-//fprintf(stderr, "kk=%d\n", kk);
 						if(horizontalPixelIndex >= this->horizontalSize || verticalPixelIndex >= this->verticalSize){
 							continue;
 						}
-						fprintf(stderr, "%d %d (%d %d %d %d) -> %d\n", verticalPixelIndex, horizontalPixelIndex, this->mbRow<<4, this->mbColumn<<4, m, n, dctRecon.read(m, n));
 
 						this->image[verticalPixelIndex][horizontalPixelIndex].Y = dctRecon.read(m, n);
 					}
@@ -3784,10 +3760,6 @@ if(kk++ == 1){
 					for(int n = 0; n < 8; n ++){
 						horizontalPixelIndex = (this->mbColumn << 4) + (n << 1);
 						verticalPixelIndex = (this->mbRow << 4) + (m << 1);
-						fprintf(stderr, "%d %d (%d %d %d %d) -> %d\n", verticalPixelIndex, horizontalPixelIndex, this->mbRow<<4, this->mbColumn<<4, m, n, dctRecon.read(m, n));
-						fprintf(stderr, "%d %d (%d %d %d %d) -> %d\n", verticalPixelIndex, horizontalPixelIndex+1, this->mbRow<<4, this->mbColumn<<4, m, n, dctRecon.read(m, n));
-						fprintf(stderr, "%d %d (%d %d %d %d) -> %d\n", verticalPixelIndex+1, horizontalPixelIndex, this->mbRow<<4, this->mbColumn<<4, m, n, dctRecon.read(m, n));
-						fprintf(stderr, "%d %d (%d %d %d %d) -> %d\n", verticalPixelIndex+1, horizontalPixelIndex+1, this->mbRow<<4, this->mbColumn<<4, m, n, dctRecon.read(m, n));
 						if(index == 4){
 							this->image[verticalPixelIndex][horizontalPixelIndex].Cb = dctRecon.read(m, n);
 							this->image[verticalPixelIndex][horizontalPixelIndex + 1].Cb = dctRecon.read(m, n);
@@ -3806,8 +3778,6 @@ if(kk++ == 1){
 				}
 				break;
 		}
-				fprintf(stderr, "kk = %d\n", kk);
-//		if(kk++ == 100) exit(0);
 
 
 	}

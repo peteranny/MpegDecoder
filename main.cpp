@@ -1,16 +1,12 @@
 int frame_i;
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <sys/stat.h>
 #include "libbit.h"
 #include "FileReader.h"
 #include "BmpMaker.h"
 #include "Huffman.h"
-//#include "JpegDecoder.h"
-//#include <string.h>
-//#include "libmpeg.h"
-//#include "libbmp.h"
-//#include "err.h"
 #ifndef EXIT
 #define EXIT(msg) {fputs(msg, stderr);exit(0);}
 #endif
@@ -127,12 +123,9 @@ class MpegDecoder{
 				};
 				//print_block(&default_intra_quantizer_matrix[0][0], false);
 				for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
-					//fprintf(stderr, "%2d: %2d %2d -> %2d\n", default_intra_quantizer_matrix[j/8][j%8], j/8, j%8, scan[j/8][j%8]);
 					intra_quantizer_matrix[m][n] = default_intra_quantizer_matrix[m][n];
 					//fprintf(stderr, "MpegDecoder.read_sequence_header(): intra_quantizer_matrix[%d]=%d\n\n", i, intra_quantizer_matrix[i]);
 				}
-				//print_block(&intra_quantizer_matrix[0][0], false);//true);
-				//jpegDec.print_block(intra_quantizer_matrix, false);
 			}
 
 			// load_non_intra_quantizer_matrix
@@ -164,18 +157,23 @@ class MpegDecoder{
 			// drop_frame_flag
 			int drop_frame_flag = mpegFile.read_bits_as_num(1);
 			//fprintf(stderr, "MpegDecoder.read_group_start(): drop_frame_flag=%d\n\n", drop_frame_flag);
+			
 			// time_code_hours
 			int time_code_hours = mpegFile.read_bits_as_num(5);
 			//fprintf(stderr, "MpegDecoder.read_group_start(): time_code_hours=%d\n\n", time_code_hours);
+		
 			// time_code_minutes
 			int time_code_minutes = mpegFile.read_bits_as_num(6);
 			//fprintf(stderr, "MpegDecoder.read_group_start(): time_code_minutes=%d\n\n", time_code_minutes);
+	
 			// marker_bit
 			int marker_bit = mpegFile.read_bits_as_num(1);
 			//fprintf(stderr, "MpegDecoder.read_group_start(): marker_bit=%d\n\n", marker_bit);
+	
 			// time_code_seconds
 			int time_code_seconds = mpegFile.read_bits_as_num(6);
 			//fprintf(stderr, "MpegDecoder.read_group_start(): time_code_seconds=%d\n\n", time_code_seconds);
+		
 			// time_code_pictures
 			int time_code_pictures = mpegFile.read_bits_as_num(6);
 			//fprintf(stderr, "MpegDecoder.read_group_start(): time_code_pictures=%d\n\n", time_code_pictures);
@@ -311,8 +309,6 @@ class MpegDecoder{
 			}
 			next_start_code();
 			
-
-
 			// make R, G, B
 			int r[vertical_size][horizontal_size];
 			int g[vertical_size][horizontal_size];
@@ -322,17 +318,12 @@ class MpegDecoder{
 				r[i][j] = frame[i][j].r;
 				g[i][j] = frame[i][j].g;
 				b[i][j] = frame[i][j].b;
-							fprintf(stderr, "frame[%d][%d] %d %d %d %d %d %d\n", i, j, frame[i][j].y, frame[i][j].cb, frame[i][j].cr, frame[i][j].r, frame[i][j].g, frame[i][j].b); 
 			}
 
-//		for(int i = 0; i < vertical_size; i++) for(int j = 0; j < horizontal_size; j++){
-//		}
-			//TODO
 			//// generate bmp file.
 			char bmppath[1024];
 			sprintf(bmppath, "%s/%d.bmp", dir_name, frame_i);
 			bmpMaker.make(bmppath, &r[0][0], &g[0][0], &b[0][0], horizontal_size, vertical_size);
-//exit(0);
 			return;
 		}
 	private:
@@ -457,9 +448,7 @@ class MpegDecoder{
 			}
 
 			for(int i = 0; i < 6; i++){
-				//fprintf(stderr, "MpegDecoder.read_macroblock(): read_block(%d)...\n\n", i);
 				read_block(i);
-				//fprintf(stderr, "MpegDecoder.read_macroblock(): read_block(%d) done.\n\n", i);
 			}
 
 			if(picture_coding_type == 4){
@@ -575,22 +564,7 @@ class MpegDecoder{
 			}
 			return 0;
 		}
-		/*
-		static void reorder_block(int *block, bool isZz2seq){
-			//fprintf(stderr, "JpegDecoder.reorder_block(): start\n");
-			int tmp[64];
-			memcpy(tmp, block, sizeof(int)*64);
-			for(int i = 0; i < 64; i++){
-				block[i] = tmp[isZz2seq? posi_in_zz[i]: posi_in_seq[i]];
-			}
-			//fprintf(stderr, "JpegDecoder.reorder_block(): end\n");
-			return;
-		}
-		*/
 		static void print_block(int *block, bool isZz){
-			//int tmp[64];
-			//memcpy(tmp, block, sizeof(int)*64);
-			//if(isZz) reorder_block(tmp, true);
 			for(int i = 0; i < 8; i++){
 				fprintf(stderr, "MpegDecoder.print_block(): ");
 				for(int j = 0; j < 8; j++){
@@ -608,7 +582,6 @@ class MpegDecoder{
 			for(r = 0; r < 8; r++) for(c = 0; c < 8; c++){
 				tmp[r][c] = (double)block[r][c];
 			}
-			//for(r=0;r<8;r++){for(c=0;c<8;c++)printf("%8.3f ",tmp[8*r+c]);printf("\n");}
 
 			double F[8], f[8];
 			for(r = 0; r < 8; r++){
@@ -616,18 +589,14 @@ class MpegDecoder{
 				idct_1d(F, f);
 				for(c = 0; c < 8; c++) tmp[r][c] = f[c];
 			}
-			//printf("\n");for(r=0;r<8;r++){for(c=0;c<8;c++)printf("%8.3f ", tmp[8*r+c]);printf("\n");}
 			for(c = 0; c < 8; c++){
 				for(r = 0; r < 8; r++) F[r] = tmp[r][c];
 				idct_1d(F, f);
 				for(r = 0; r < 8; r++) tmp[r][c] = f[r];
 			}
-			//printf("\n");for(r=0;r<8;r++){for(c=0;c<8;c++)printf("%8.3f ", tmp[8*r+c]);printf("\n");}
 			for(r = 0; r < 8; r++) for(c = 0; c < 8; c++){
 				block[r][c] = round(tmp[r][c]);
 			}
-			//printf("\n");for(r=0;r<8;r++){for(c=0;c<8;c++)printf("%8d ", jpeg_tmp[8*r+c]);printf("\n");}
-			//for(i=0;i<8;i++)printf("F[%d]=%4.0f, f[%d]=%8.3f\n", i, F[i], i, f[i]);
 			return;
 		}
 		static void idct_1d(double F[8], double f[8]){
@@ -673,14 +642,13 @@ class MpegDecoder{
 		int dct_dc_cr_past;
 	public:
 		void read_block(int i){
+
 			int dct_zz[64], dct_zz_i = 0;
 			for(int j = 0; j < 64; j++) dct_zz[j] = 0;
 
 			// shared by dct_coeff_first and dct_coeff_next
-			static Huffman *dct_coeff_huff = NULL;
-			if(!dct_coeff_huff){
-				# include "dct_coeff_huff.h"
-			}
+			static Huffman *dct_coeff_first_huff = NULL;
+			static Huffman *dct_coeff_next_huff = NULL;
 			if(pattern_code[i]){
 				if(macroblock_intra){
 					// dct_coeff_first for I frame
@@ -691,12 +659,11 @@ class MpegDecoder{
 							#include "dct_dc_size_luminance_huff.h"
 						}
 						int dct_dc_size_luminance = huffman_decode(dct_dc_size_luminance_huff, 7);
-						//fprintf(stderr, "MpegDecoder.read_block(): dct_dc_size_luminance=%d\n\n", dct_dc_size_luminance);
 						if(dct_dc_size_luminance > 0){
 							int dct_dc_differential = mpegFile.read_bits_as_num(dct_dc_size_luminance);
-							//fprintf(stderr, "MpegDecoder.read_block(): dct_dc_differential_luminance=%d\n\n", dct_dc_differential_luminance);
+							//fprintf(stderr, "MpegDecoder.read_block(): dct_dc_differential=%d\n\n", dct_dc_differential);
 							dct_zz[dct_zz_i++] = (dct_dc_differential&(1 << (dct_dc_size_luminance - 1)))? dct_dc_differential: (-1 << dct_dc_size_luminance)|(dct_dc_differential + 1);
-							//(dct_dc_differential_luminance < pow(2, dct_dc_size_luminance - 1))? dct_dc_differential_luminance - (pow(2, dct_dc_size_luminance) - 1): dct_dc_differential_luminance;
+							//(dct_dc_differential < pow(2, dct_dc_size_luminance - 1))? dct_dc_differential - (pow(2, dct_dc_size_luminance) - 1): dct_dc_differential;
 						}
 						else{
 							dct_zz[dct_zz_i++] = 0;
@@ -713,7 +680,6 @@ class MpegDecoder{
 						if(dct_dc_size_chrominance > 0){
 							int dct_dc_differential = mpegFile.read_bits_as_num(dct_dc_size_chrominance);
 							//fprintf(stderr, "MpegDecoder.read_block(): dct_dc_differential=%d\n\n", dct_dc_differential);
-							//dct_zz[dct_zz_i++] = (dct_dc_differential < pow(2, dct_dc_size_chrominance - 1))? dct_dc_differential - (pow(2, dct_dc_size_chrominance) - 1): dct_dc_differential;
 							dct_zz[dct_zz_i++] = (dct_dc_differential&(1 << (dct_dc_size_chrominance - 1)))? dct_dc_differential: (-1 << dct_dc_size_chrominance)|(dct_dc_differential + 1);
 						}
 						else{
@@ -724,22 +690,26 @@ class MpegDecoder{
 				else{
 					// dct_coeff_first for non I frame
 					// TODO
-					dct_coeff_huff->set_codeword(dct_coeff_symbol(0, 1), "1");
-					dct_coeff_huff->make_hash_table();
+					if(!dct_coeff_first_huff){
+						#include "dct_coeff_first_huff.h"
+					}
 					EXIT("MpegDecoder.read_block(): error. // dct_coeff_first");
 				}
-				//fprintf(stderr, "%d\n", dct_zz[0]);
+
 
 				// dct_coeff_next
 				if(picture_coding_type != 4){
 					// non-dc-intra-coded (non D)
 					// modify the huffman tree due to the difference from dct_coeff_first
-					dct_coeff_huff->set_codeword(dct_coeff_symbol(0, 1), "11");
-					dct_coeff_huff->make_hash_table();
+					//TODO
+					if(!dct_coeff_next_huff){
+						#include "dct_coeff_next_huff.h"
+					}
 
 					int run, level;
 					while(1){
-						unsigned char dct_coeff_next = huffman_decode(dct_coeff_huff, 16);
+			//clock_t t1 = clock();
+						unsigned char dct_coeff_next = huffman_decode(dct_coeff_next_huff, 16);
 						// decode run and level
 						dct_coeff_symbol(0, 0, dct_coeff_next, &run, &level);
 						// end_of_block
@@ -773,22 +743,20 @@ class MpegDecoder{
 						}
 						dct_zz_i += run;
 						dct_zz[dct_zz_i++] = level;
+			//clock_t t2 = clock();
+			//static int kk = 0;
+			//fprintf(stderr, "%d\n", t2 - t1);
+			//if(kk++ == 2)exit(0);
 					}
 				}
 				if(dct_zz_i > 64) EXIT("MpegDecoder.read_block(): error // block_i");
 
+
 				int dct_recon[8][8];
 				for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
-if(i==0)					dct_recon[m][n] = 2*dct_zz[scan[m][n]]*quantizer_scale*intra_quantizer_matrix[m][n]/16;
-else					dct_recon[m][n] = dct_zz[scan[m][n]]*quantizer_scale*intra_quantizer_matrix[m][n]>>3;//??????
-					//fprintf(stderr, "vvv %d %d %d\n", dct_zz[scan[m][n]], quantizer_scale, intra_quantizer_matrix[m][n]);
-						//fprintf(stderr, "%d %d : %d", m, n, dct_recon[m][n]);//TODO
-					//fprintf(stderr, "(%d)", dct_recon[m][n]&1);
-					if(dct_recon[m][n] & 1 == 0){ // ?????????
-						//fprintf(stderr, "!!!");
-					fprintf(stderr, " - %d", dct_recon[m][n]==0?0:(dct_recon[m][n] > 0)?1:-1);
+					dct_recon[m][n] = 2*dct_zz[scan[m][n]]*quantizer_scale*intra_quantizer_matrix[m][n]/16;
+					if((dct_recon[m][n] & 1) == 0){
 						dct_recon[m][n] -= (dct_recon[m][n] == 0)? 0: (dct_recon[m][n] > 0)? 1: -1;
-					fprintf(stderr, " = %d", dct_recon[m][n]);
 					}
 					if(dct_recon[m][n] > 2047){
 						dct_recon[m][n] = 2047;
@@ -796,9 +764,7 @@ else					dct_recon[m][n] = dct_zz[scan[m][n]]*quantizer_scale*intra_quantizer_ma
 					if(dct_recon[m][n] < -2048){
 						dct_recon[m][n] = -2048;
 					}
-					//fprintf(stderr, "\n");
 				}
-
 
 				if(i < 4){
 					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_y_past;
@@ -813,14 +779,10 @@ else					dct_recon[m][n] = dct_zz[scan[m][n]]*quantizer_scale*intra_quantizer_ma
 					dct_dc_cr_past = dct_recon[0][0];
 				}
 				else EXIT("MpegDecoder.read_block(): error. // dct_recon[0][0]");
-				//fprintf(stderr, "\n");
 				// idct
 
 				idct_block(dct_recon);
 
-				//fprintf(stderr, "%d\n", dct_zz[0]);
-				//print_block(dct_zz, true);
-				
 				// clipping
 				for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
 					if(dct_recon[m][n] > 255) dct_recon[m][n] = 255;
@@ -828,51 +790,27 @@ else					dct_recon[m][n] = dct_zz[scan[m][n]]*quantizer_scale*intra_quantizer_ma
 				}
 				//print_block(&dct_recon[0][0], false);
 
-				//TODO
-				static int kk = 0;
 				// posit block in frame
 				for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
 					if(i < 4){
-//				fprintf(stderr, "AA\n");
-//						int y = mb_row*mb_height + (int)(i/2)*8 + m;
-//						int x = mb_column*mb_width + (i%2)*8 + n;
-						int y = mb_row*16 + (int)(i/2)*8 + m;
-						int x = mb_column*16 + (i%2)*8 + n;
-//						int y = mb_row<<4 + ((i>>1)<<3) + m;
-//				fprintf(stderr, "mbrow=%d, i=%d, m=%d, y=%d\n", mb_row, i,m,y);
-//						int x = mb_column<<4 + ((i&1)<<3) + n;
-//				fprintf(stderr, "mbcolumn=%d, i=%d, n=%d, x=%d\n", mb_column, i,n,x);
+						int y = mb_row*16 + (int)(i/2)*8 + m; //mb_height?????
+						int x = mb_column*16 + (i%2)*8 + n; //mb_width?????
 						if(y >= vertical_size || x >= horizontal_size) continue;
-						fprintf(stderr, "%d %d (%d %d %d %d) -> %d\n", y, x, mb_row*16, mb_column*16, m, n, dct_recon[m][n]);
-
 						frame[y][x].y = dct_recon[m][n];
 					}
 					else if(i < 6){
-
 						for(int k = 0; k < 4; k++){
-//							int y = mb_row<<4 + m<<1 + k/2;
-//							int x = mb_column<<4 + n<<1 + k%2;
 							int y = mb_row*16 + 2*m + k/2;
 							int x = mb_column*16 + 2*n + k%2;
-						if(y >= vertical_size || x >= horizontal_size){
-//							fprintf(stderr, "y=%d x=%d, continue\n", y, x);
-							continue;
-						}
-//				fprintf(stderr, "BB\n");
-						fprintf(stderr, "%d %d (%d %d %d %d) -> %d\n", y, x, mb_row*16, mb_column*16, m, n, dct_recon[m][n]);
+							if(y >= vertical_size || x >= horizontal_size) continue;
 							if(i == 4) frame[y][x].cb = dct_recon[m][n];
 							if(i == 5) frame[y][x].cr = dct_recon[m][n];
 						}
-
 					}
 					else EXIT("MpegDecoder.read_block(): error.");
 				}
-				//print_block(&dct_recon[0][0], false);
-				fprintf(stderr, "kk = %d\n", kk);
-//				if(kk++ == 100) exit(0);
-				//static int ssss = 0;
-				//if(ssss == 0)exit(0);
 			}
+			
 			return;
 		}
 	private:
