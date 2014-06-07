@@ -84,22 +84,17 @@ int bit2num(int nBits, unsigned char *buf, int buf_head){
 	}
 	*/
 }
-/*
-void dec2bin(int num, unsigned char *buf, int nByte){
-	int i;
-	for(i = 0; i < nByte; i++) buf[i] = 0;
-	i = 0;
-	while(num != 0){
-		if(i == nByte*8) EXIT("dec2bin error.");
-		int rem = num%2;
-		int div = num/2;
-		if(rem == 1) set_bit(BITON, i, buf, nByte);
-		num = div;
-		i++;
+
+void num2byte(int num, unsigned char *buf, int nBytes){
+	//fprintf(stderr, "num2byte(): num=%d, nBytes=%d\n", num, nBytes);
+	for(int i = 0; i < nBytes; i++){
+		buf[i] = (num & (0xFF << 8*(nBytes - i - 1))) >> 8*(nBytes - i - 1);
+		//fprintf(stderr, "num2byte(): mask=%d, buf[%d]=%02X\n", 0xFF << (nBytes - i - 1), i, buf[i]);
 	}
+	//fprintf(stderr, "\n");
 	return;
 }
-
+/*
 // one bit only by far
 void get_bit_range(unsigned char *src, int nByte, int start, int end, unsigned char *des){ // end: exlusive
 	// bit(n - 1) ... bit(0)

@@ -1,0 +1,12 @@
+IN=../MPEG/I_ONLY.M1V
+OUT=test
+all:
+	sudo g++ -g -o main main.cpp
+	sudo make run
+run:
+	./main $(IN)
+clean:
+	rm *~ .*
+ans: MPEGDecoder.cpp
+	g++ -g MPEGDecoder.cpp
+	./a.out $(IN) $(OUT)

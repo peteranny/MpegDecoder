@@ -102,7 +102,7 @@ void write2file(FILE *file, int orderType, unsigned char *buf, int size){
 					}
 					*/
 				}
-				fprintf(stderr, "FileReader.read(): buf[%d]=%02X, cur=%02X, posi=%d\n", i, buf[i], cur_byte, cur_posi_in_byte);
+				//fprintf(stderr, "FileReader.read(): buf[%d]=%02X, cur=%02X, posi=%d\n", i, buf[i], cur_byte, cur_posi_in_byte);
 			}
 			return true;
 		}
@@ -123,7 +123,7 @@ void write2file(FILE *file, int orderType, unsigned char *buf, int size){
 			}
 			//buf[nBytes_more] &= ((unsigned char)0xFF) << (cur_posi_in_byte);
 
-			if(frame_i >= 119) fprintf(stderr, "FileReader.read_bits(): cur=%02X, posi=%d\n", cur_byte, cur_posi_in_byte);
+			//fprintf(stderr, "FileReader.read_bits(): cur=%02X, posi=%d\n", cur_byte, cur_posi_in_byte);
 			return ret; // return starting position in buf[0]
 		}
 
