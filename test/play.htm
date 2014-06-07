@@ -1,0 +1,16 @@
+<html>
+	<head></head>
+	<body>
+		<img>
+		<script>
+			var dt = 30;
+			var i = 0;
+			var max_i = 119;
+			setInterval(function(){
+				document.images[0].src = i + ".bmp";
+				i++;
+				i = i%(max_i + 1);
+			}, dt);
+		</script>
+	</body>
+</html>
