@@ -2528,15 +2528,12 @@ public:
 
 			if(this->pictureCodingType != 4){
 				while(nextBits(2, true) != 0x2){
-		clock_t t1 = clock();
+
 					readRunLevel(run, level);
 					k += (run + 1);
 					dctZZ[k] = level;
 					//printf("dctCoeffNext run: %d, level: %d\n", run, level);
-		clock_t t2 = clock();
-		static int kk = 0;
-		fprintf(stderr, "%d\n", t2 - t1);
-		if(kk++ == 2) exit(0);
+
 				}
 				unsigned int endOfBlock = nextBits(2);
 				//printf("EOB\n");
@@ -2552,8 +2549,13 @@ public:
 	}
 	
 	void readRunLevel(int &run, int &level, bool first = false){
+		clock_t t1 = clock();
 		int tempBitPtr = this->fileStartBit;
 		run = (first)? this->dctCoeffFirstRunTable.decode(*this): this->dctCoeffNextRunTable.decode(*this);
+		clock_t t2 = clock();
+		static int kk = 0;
+		fprintf(stderr, "%d\n", t2 - t1);
+		if(kk++ == 2) exit(0);
 		this->fileStartBit = tempBitPtr;
 		level = (first)? this->dctCoeffFirstLevelTable.decode(*this): this->dctCoeffNextLevelTable.decode(*this);
 		if(run == -1){ // run == escape
@@ -2571,6 +2573,7 @@ public:
 					break;
 			}
 		}
+
 	}
 	
 	int sign(int value){

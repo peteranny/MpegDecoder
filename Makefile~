@@ -1,8 +1,8 @@
-IN=../MPEG/I_ONLY.M1V
+IN=../MPEG/IP_ONLY.M1V
 OUT=test
 all:
-	sudo g++ -g -o main main.cpp
-	sudo make run
+	g++ -g -o main main.cpp
+	make run
 run:
 	./main $(IN)
 clean:

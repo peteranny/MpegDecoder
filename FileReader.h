@@ -21,27 +21,6 @@ class FileReader{
 			if(!file) EXIT("FileReader() error.");
 			read(1, &cur_byte);
 		}
-/*
-#define LITTLEENDIAN 0
-#define BIGENDIAN 1
-
-void write2file(FILE *file, int orderType, unsigned char *buf, int size){
-	int i;
-	switch(orderType){
-		case LITTLEENDIAN:
-			for(i = size - 1; i >= 0; i--) fputc(buf[i], file);
-			break;
-		case BIGENDIAN:
-			for(i = 0; i < size; i++) fputc(buf[i], file);
-			break;
-		default:
-			EXIT("write_to_file error.");
-	}
-	return;
-}
-
-#define FILEBUFSIZE 1024
-*/
 
 	private:
 		#define FILEBUFSIZE 1024
