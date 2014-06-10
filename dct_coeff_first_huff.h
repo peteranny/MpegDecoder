@@ -1,7 +1,7 @@
 dct_coeff_first_huff = new Huffman(
 	true,
 	(int[]){
-	0, 
+		0, 
 	},
 	0,
 	(unsigned char[]){
@@ -9,7 +9,7 @@ dct_coeff_first_huff = new Huffman(
 	0
 );
 dct_coeff_first_huff->make_codewords();
-dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0x00, 0x00), "10"); // end_of_block
+//dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0x00, 0x00), "10"); // end_of_block
 dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0, 1), "1"); // only difference from dct_coeff_first
 dct_coeff_first_huff->set_codeword(dct_coeff_symbol(1, 1), "011");
 dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0, 2), "0100");

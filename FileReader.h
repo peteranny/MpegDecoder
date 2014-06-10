@@ -71,8 +71,7 @@ class FileReader{
 						if(buf[i] == 0xFF){
 							//fprintf(stderr, "read4mfile: detect 0xFF\n");
 							unsigned char next = fgetc(file);
-							if(next == 0x00){ // discard
-								//fprintf(stderr, "read4mfile: detect next byte=0x00\n");
+							if(next == 0x00){ // discard //fprintf(stderr, "read4mfile: detect next byte=0x00\n");
 							}
 							else{
 								rtrn(&next, 1);

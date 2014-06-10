@@ -166,11 +166,11 @@ void fprintb(FILE *fp, int num, int nBits){
 	if(num >= pow(2, nBits)) nBits = floor(log2(num)) + 1;
 	for(int i = pow(2, nBits - 1); i >= 1; i /= 2){
 		if(num >= i){
-			//fprintf(fp, "1");
+			fprintf(fp, "1");
 			num -= i;
 		}
 		else{
-			//fprintf(fp, "0");
+			fprintf(fp, "0");
 		}
 	}
 	return;

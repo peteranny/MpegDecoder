@@ -1,11 +1,11 @@
 macroblock_type_I_huff = new Huffman(
 	false,
 	(int[]){
-	0, 1, 1
+		0, 1, 1
 	},
 	2,
 	(unsigned char[]){
-	1, 2
+		1, 2
 	},
 	2
 );

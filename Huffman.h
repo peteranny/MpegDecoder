@@ -42,16 +42,21 @@ class Huffman{
 		void print_codewords(){
 			for(int i = 0; i <= nSymbols + 1; i++){
 				if(codeword[i] == -1 || codeword[i] == nCodewords){
-					//fprintf(stderr, "Huffman.print_codewords(): i=%2d,       codeword=%4d, symbol=%s\n", i, codeword[i], (i == 0)? "START": "END");
+					fprintf(stderr, "Huffman.print_codewords(): i=%2d,       codeword=%4d, symbol=%s\n", i, codeword[i], (i == 0)? "START": "END");
 				}
 				else{
-					//fprintf(stderr, "Huffman.print_codewords(): i=%2d, l=%2d, codeword=%4d=", i, codelen[i], codeword[i]);
-					//fprintb(stderr, codeword[i], maxLen);
-					//fprintf(stderr, "(");
-					//fprintb(stderr, codeword[i] >> (maxLen - codelen[i]), codelen[i]);
-					//fprintf(stderr, "), symbol=%02X(%d)\n", symbol[i], symbol[i]);
+					fprintf(stderr, "Huffman.print_codewords(): i=%2d, l=%2d, codeword=%4d=", i, codelen[i], codeword[i]);
+					fprintb(stderr, codeword[i], maxLen);
+					fprintf(stderr, "(");
+					fprintb(stderr, codeword[i] >> (maxLen - codelen[i]), codelen[i]);
+					fprintf(stderr, "), symbol=%02X(%d)\n", symbol[i], symbol[i]);
 				}
 			}
+		}
+		void print_codeword(unsigned char symbol){
+			int i = get_index(symbol);
+			fprintb(stderr, codeword[i] >> (maxLen - codelen[i]), codelen[i]);
+			return;
 		}
 		void make_codewords(){
 			int i = 0; // symbol index
@@ -85,6 +90,9 @@ class Huffman{
 			return;
 		}
 	public:
+		int get_maxLen(){
+			return maxLen;
+		}
 		int get_index(unsigned char symbol){
 			// check if duplicate symbols
 			for(int i = 1; i <= nSymbols; i++) for(int j = 1; j < i; j++){
@@ -101,7 +109,7 @@ class Huffman{
 			return codelen[i];
 		}
 		void set_codeword(unsigned char symbol, const char *codeword_str){
-			//fprintf(stderr, "Huffman.set_codeword(): symbol=%2X, codeword_str=%s\n", symbol, codeword_str);
+			fprintf(stderr, "Huffman.set_codeword(): symbol=%02X, codeword_str=%s\n", symbol, codeword_str);
 			// parse codeword_str
 			int codelen = strlen(codeword_str);
 			if(codelen > maxLen){
@@ -111,7 +119,7 @@ class Huffman{
 				}
 				maxLen = codelen;
 				nCodewords = 1 << maxLen;
-				this->codeword[nSymbols + 1] = nCodewords;
+				this->codeword[isIncr? nSymbols + 1: 0] = nCodewords;
 				delete this->hash;
 				this->hash = new int[nCodewords];
 				// let alone nCodesOfLen
@@ -133,6 +141,7 @@ class Huffman{
 				delete this->symbol;
 				delete this->codeword;
 				delete this->codelen;
+
 				this->symbol = new unsigned char[1 + (nSymbols + 1) + 1];
 				this->codeword = new int[1 + (nSymbols + 1) + 1];
 				this->codelen = new int[1 + (nSymbols + 1) + 1];
@@ -142,6 +151,7 @@ class Huffman{
 				this->symbol[1 + nSymbols] = symbol;
 				this->codeword[1 + nSymbols] = codeword;
 				this->codelen[1 + nSymbols] = codelen;
+				this->index[symbol] = 1 + nSymbols;
 				memcpy(&this->symbol[1 + nSymbols + 1], &old_symbol[nSymbols + 1], sizeof(unsigned char));
 				memcpy(&this->codeword[1 + nSymbols + 1], &old_codeword[nSymbols + 1], sizeof(int));
 				memcpy(&this->codelen[1 + nSymbols + 1], &old_codelen[nSymbols + 1], sizeof(int));
@@ -179,7 +189,7 @@ class Huffman{
 			return;
 		}
 		void make_hash_table(){
-			//print_codewords();
+			print_codewords();
 			// produce huffman hash function
 			int i = isIncr? 0: nSymbols + 1; // hashed symbol index
 			for(int codeword = 0; codeword < nCodewords; codeword++){

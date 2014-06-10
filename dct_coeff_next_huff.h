@@ -1,7 +1,7 @@
 dct_coeff_next_huff = new Huffman(
 	true,
 	(int[]){
-	0, 
+		0, 
 	},
 	0,
 	(unsigned char[]){

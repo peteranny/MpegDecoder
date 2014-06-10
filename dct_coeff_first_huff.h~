@@ -1,7 +1,7 @@
 dct_coeff_first_huff = new Huffman(
 	true,
 	(int[]){
-	0, 
+		0, 
 	},
 	0,
 	(unsigned char[]){
@@ -9,8 +9,8 @@ dct_coeff_first_huff = new Huffman(
 	0
 );
 dct_coeff_first_huff->make_codewords();
-dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0x00, 0x00), "10"); // end_of_block
-dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0, 1), "1");
+//dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0x00, 0x00), "10"); // end_of_block
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0, 1), "1"); // only difference from dct_coeff_first
 dct_coeff_first_huff->set_codeword(dct_coeff_symbol(1, 1), "011");
 dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0, 2), "0100");
 dct_coeff_first_huff->set_codeword(dct_coeff_symbol(2, 1), "0101");
@@ -98,4 +98,28 @@ dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0, 36), "000000000010100");
 dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0, 37), "000000000010011");
 dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0, 38), "000000000010010");
 dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0, 39), "000000000010001");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(0, 40), "000000000010000");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(1, 8), "000000000011111");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(1, 9), "000000000011110");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(1, 10), "000000000011101");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(1, 11), "000000000011100");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(1, 12), "000000000011011");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(1, 13), "000000000011010");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(1, 14), "000000000011001");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(1, 15), "0000000000010011");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(1, 16), "0000000000010010");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(1, 17), "0000000000010001");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(1, 18), "0000000000010000");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(6, 3), "0000000000010100");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(11, 2), "0000000000011010");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(12, 2), "0000000000011001");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(13, 2), "0000000000011000");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(14, 2), "0000000000010111");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(15, 2), "0000000000010110");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(16, 2), "0000000000010101");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(27, 1), "0000000000011111");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(28, 1), "0000000000011110");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(29, 1), "0000000000011101");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(30, 1), "0000000000011100");
+dct_coeff_first_huff->set_codeword(dct_coeff_symbol(31, 1), "0000000000011011");
 dct_coeff_first_huff->make_hash_table();
