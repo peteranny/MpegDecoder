@@ -1,4 +1,4 @@
-IN=../MPEG/IP_ONLY.M1V
+IN=../MPEG/I_ONLY.M1V
 OUT=test
 all:
 	g++ -g -o main main.cpp

@@ -456,7 +456,6 @@ class MpegDecoder{
 			if(!motion_code_huff){
 				#include "motion_code_huff.h"
 			}
-
 			motion_horizontal_forward_r = 0;
 			motion_vertical_forward_r = 0;
 			if(macroblock_motion_forward){
@@ -732,12 +731,10 @@ class MpegDecoder{
 			int dct_zz[64], dct_zz_i = 0;
 			for(int j = 0; j < 64; j++) dct_zz[j] = 0;
 
-			// shared by dct_coeff_first and dct_coeff_next
-
 			if(pattern_code[i]){
 				fprintf(stderr, "read_block(): block %d...\n", i);
+				// dct_coeff_first
 				if(macroblock_intra){
-					// dct_coeff_first for I frame
 					if(i < 4){
 						// for block 0..3 (Y)
 						static Huffman *dct_dc_size_luminance_huff = NULL;
@@ -775,7 +772,7 @@ class MpegDecoder{
 					}
 				}
 				else{
-					// dct_coeff_first for non I frame
+					// dct_coeff_first for non intra block
 					static Huffman *dct_coeff_first_huff = NULL;
 					if(!dct_coeff_first_huff){
 						#include "dct_coeff_first_huff.h"
@@ -856,7 +853,10 @@ class MpegDecoder{
 					}
 				}
 				if(dct_zz_i > 64) EXIT("MpegDecoder.read_block(): error // block_i");
+			}
 
+			// decoding...
+			if(macroblock_intra){
 				int dct_recon[8][8];
 				for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
 					dct_recon[m][n] = 2*dct_zz[scan[m][n]]*quantizer_scale*intra_quantizer_matrix[m][n]/16;
@@ -884,8 +884,8 @@ class MpegDecoder{
 					dct_dc_cr_past = dct_recon[0][0];
 				}
 				else EXIT("MpegDecoder.read_block(): error. // dct_recon[0][0]");
-				// idct
 
+				// idct
 				idct_block(dct_recon);
 
 				// clipping
@@ -915,7 +915,10 @@ class MpegDecoder{
 					else EXIT("MpegDecoder.read_block(): error.");
 				}
 			}
-			
+			else{
+				// TODO
+			}
+
 			return;
 		}
 	private:
