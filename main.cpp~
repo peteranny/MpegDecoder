@@ -787,7 +787,7 @@ class MpegDecoder{
 					dct_coeff_symbol(0, 0, (unsigned char)dct_coeff_first, &run, &level);
 					// escape
 					if(run == 0xFF && level == 0xFF){
-						fprintf(stderr, "read_block(): dct_coeff_next=%02X, run=%d, level=%d\n", dct_coeff_next, run, level);
+						fprintf(stderr, "read_block(): dct_coeff_first=%02X, run=%d, level=%d\n", dct_coeff_first, run, level);
 						fprintf(stderr, "read_block(): escape.\n");
 						run = mpegFile.read_bits_as_num(6);
 						level = mpegFile.read_bits_as_num(8);

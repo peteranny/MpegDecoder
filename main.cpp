@@ -466,7 +466,6 @@ class MpegDecoder{
 				if((forward_f != 1) && (motion_horizontal_forward_code != 0)){
 					motion_horizontal_forward_r = mpegFile.read_bits_as_num(forward_r_size);
 					fprintf(stderr, "read_macroblock() motion_horizontal_forward_r=%d\n", motion_horizontal_forward_r);
-					EXIT("MpegDecoder.read_macroblock(): error. // motion_horizontal_forward_r");
 				}
 
 				motion_vertical_forward_code = huffman_decode(motion_code_huff);
@@ -475,7 +474,6 @@ class MpegDecoder{
 				if((forward_f != 1) && (motion_vertical_forward_code != 0)){
 					motion_vertical_forward_r = mpegFile.read_bits_as_num(forward_r_size);
 					fprintf(stderr, "read_macroblock(): motion_vertical_forward_r=%d\n", motion_vertical_forward_r);
-					EXIT("MpegDecoder.read_macroblock(): error. // motion_vertical_forward_r");
 				}
 
 				fprintf(stderr, "read_macroblock(): forward motion vector=(%d,%d)\n", motion_horizontal_forward_r, motion_vertical_forward_r);
