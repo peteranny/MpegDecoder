@@ -45,6 +45,26 @@ class MpegDecoder{
 					if(g < 0) g = 0;
 					if(b < 0) b = 0;
 				}
+				friend Pixel operator+(const Pixel &p1, const Pixel &p2){
+					Pixel p;
+					p.y = p1.y + p2.y;
+					p.cb = p1.cb + p2.cb;
+					p.cr = p1.cr + p2.cr;
+					p.r = p1.r + p2.r;
+					p.g = p1.g + p2.g;
+					p.b = p1.b + p2.b;
+					return p;
+				}
+				friend Pixel operator/(const Pixel &p1, const int i2){
+					Pixel p;
+					p.y = p1.y/i2;
+					p.cb = p1.cb/i2;
+					p.cr = p1.cr/i2;
+					p.r = p1.r/i2;
+					p.g = p1.g/i2;
+					p.b = p1.b/i2;
+					return p;
+				}
 		};
 		int sequence_header_code;
 		int horizontal_size;
@@ -52,6 +72,7 @@ class MpegDecoder{
 		int mb_width;
 		int mb_height;
 		Pixel **frame;
+		Pixel **frame_past;
 		int pel_aspect_ratio;
 		int picture_rate;
 		int bit_rate;
@@ -77,6 +98,8 @@ class MpegDecoder{
 			mb_height = (vertical_size + 15)/16;
 			frame = new Pixel*[vertical_size];
 			for(int i = 0; i < vertical_size; i++) frame[i] = new Pixel[horizontal_size];
+			frame_past = new Pixel*[vertical_size];
+			for(int i = 0; i < vertical_size; i++) frame_past[i] = new Pixel[horizontal_size];
 
 			pel_aspect_ratio = mpegFile.read_bits_as_num(4);
 			// UNDONE
@@ -297,7 +320,13 @@ class MpegDecoder{
 			char bmppath[1024];
 			sprintf(bmppath, "%s/%d.bmp", dir_name, frame_i);
 			bmpMaker.make(bmppath, &r[0][0], &g[0][0], &b[0][0], horizontal_size, vertical_size);
-			
+
+			// buffer for non intra frame
+			fprintf(stderr, "!\n");
+			for(int i = 0; i < vertical_size; i++){
+				memcpy(frame_past[i], frame[i], sizeof(Pixel)*horizontal_size);
+			}
+
 			next_start_code();
 			return;
 		}
@@ -548,7 +577,6 @@ class MpegDecoder{
 				}
 
 				fprintf(stderr, "read_macroblock(): forward motion vector=(%d,%d)\n", recon_right_for, recon_down_for);
-				//TODO:right_for, down_for
 			}
 			else{
 				recon_right_for = 0;
@@ -812,40 +840,45 @@ class MpegDecoder{
 				fprintf(stderr, "read_block(): block %d...\n", i);
 				// dct_coeff_first
 				if(macroblock_intra){
-					if(i < 4){
-						// for block 0..3 (Y)
-						static Huffman *dct_dc_size_luminance_huff = NULL;
-						if(!dct_dc_size_luminance_huff){
-							#include "dct_dc_size_luminance_huff.h"
-						}
-						dct_dc_size_luminance = huffman_decode(dct_dc_size_luminance_huff);
-						fprintf(stderr, "read_block(): dct_dc_size_luminance=%d\n", dct_dc_size_luminance);
-						if(dct_dc_size_luminance > 0){
-							dct_dc_differential = mpegFile.read_bits_as_num(dct_dc_size_luminance);
-							fprintf(stderr, "read_block(): dct_dc_differential=%d\n", dct_dc_differential);
-							dct_zz[dct_zz_i++] = (dct_dc_differential&(1 << (dct_dc_size_luminance - 1)))? dct_dc_differential: (-1 << dct_dc_size_luminance)|(dct_dc_differential + 1);
-							//(dct_dc_differential < pow(2, dct_dc_size_luminance - 1))? dct_dc_differential - (pow(2, dct_dc_size_luminance) - 1): dct_dc_differential;
-						}
-						else{
-							dct_zz[dct_zz_i++] = 0;
-						}
-					}
-					else{
-						// for block 4..5 (CbCr)
-						static Huffman *dct_dc_size_chrominance_huff = NULL;
-						if(!dct_dc_size_chrominance_huff){
-							#include "dct_dc_size_chrominance_huff.h"
-						}
-						dct_dc_size_chrominance = huffman_decode(dct_dc_size_chrominance_huff);
-						fprintf(stderr, "read_block(): dct_dc_size_chrominance=%d\n", dct_dc_size_chrominance);
-						if(dct_dc_size_chrominance > 0){
-							dct_dc_differential = mpegFile.read_bits_as_num(dct_dc_size_chrominance);
-							fprintf(stderr, "read_block(): dct_dc_differential=%d\n", dct_dc_differential);
-							dct_zz[dct_zz_i++] = (dct_dc_differential&(1 << (dct_dc_size_chrominance - 1)))? dct_dc_differential: (-1 << dct_dc_size_chrominance)|(dct_dc_differential + 1);
-						}
-						else{
-							dct_zz[dct_zz_i++] = 0;
-						}
+					switch(i){
+						case 0: case 1: case 2: case 3:
+							// for block 0..3 (Y)
+							static Huffman *dct_dc_size_luminance_huff = NULL;
+							if(!dct_dc_size_luminance_huff){
+#include "dct_dc_size_luminance_huff.h"
+							}
+							dct_dc_size_luminance = huffman_decode(dct_dc_size_luminance_huff);
+							fprintf(stderr, "read_block(): dct_dc_size_luminance=%d\n", dct_dc_size_luminance);
+							if(dct_dc_size_luminance > 0){
+								dct_dc_differential = mpegFile.read_bits_as_num(dct_dc_size_luminance);
+								fprintf(stderr, "read_block(): dct_dc_differential=%d\n", dct_dc_differential);
+								dct_zz[dct_zz_i++] = (dct_dc_differential&(1 << (dct_dc_size_luminance - 1)))? dct_dc_differential: (-1 << dct_dc_size_luminance)|(dct_dc_differential + 1);
+								//(dct_dc_differential < pow(2, dct_dc_size_luminance - 1))? dct_dc_differential - (pow(2, dct_dc_size_luminance) - 1): dct_dc_differential;
+							}
+							else{
+								dct_zz[dct_zz_i++] = 0;
+							}
+							break;
+						case 4: case 5:
+							// for block 4..5 (CbCr)
+							static Huffman *dct_dc_size_chrominance_huff = NULL;
+							if(!dct_dc_size_chrominance_huff){
+#include "dct_dc_size_chrominance_huff.h"
+							}
+							dct_dc_size_chrominance = huffman_decode(dct_dc_size_chrominance_huff);
+							fprintf(stderr, "read_block(): dct_dc_size_chrominance=%d\n", dct_dc_size_chrominance);
+							if(dct_dc_size_chrominance > 0){
+								dct_dc_differential = mpegFile.read_bits_as_num(dct_dc_size_chrominance);
+								fprintf(stderr, "read_block(): dct_dc_differential=%d\n", dct_dc_differential);
+								dct_zz[dct_zz_i++] = (dct_dc_differential&(1 << (dct_dc_size_chrominance - 1)))? dct_dc_differential: (-1 << dct_dc_size_chrominance)|(dct_dc_differential + 1);
+							}
+							else{
+								dct_zz[dct_zz_i++] = 0;
+							}
+							break;
+						default:
+							EXIT("read_block(): error // i");
+							break;
 					}
 				}
 				else{
@@ -948,20 +981,23 @@ class MpegDecoder{
 					}
 				}
 
-				if(i < 4){
-					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_y_past;
-					dct_dc_y_past = dct_recon[0][0];
+				switch(i){
+					case 0: case 1: case 2: case 3:
+						dct_recon[0][0] = dct_zz[0]*8 + dct_dc_y_past;
+						dct_dc_y_past = dct_recon[0][0];
+						break;
+					case 4:
+						dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cb_past;
+						dct_dc_cb_past = dct_recon[0][0];
+						break;
+					case 5:
+						dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cr_past;
+						dct_dc_cr_past = dct_recon[0][0];
+						break;
+					default:
+						EXIT("MpegDecoder.read_block(): error. // dct_recon[0][0]");
+						break;
 				}
-				else if(i == 4){
-					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cb_past;
-					dct_dc_cb_past = dct_recon[0][0];
-				}
-				else if(i == 5){
-					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cr_past;
-					dct_dc_cr_past = dct_recon[0][0];
-				}
-				else EXIT("MpegDecoder.read_block(): error. // dct_recon[0][0]");
-
 				// idct
 				idct_block(dct_recon);
 
@@ -974,26 +1010,70 @@ class MpegDecoder{
 
 				// posit block in frame
 				for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
-					if(i < 4){
-						int y = mb_row*16 + (int)(i/2)*8 + m; //mb_height?????
-						int x = mb_column*16 + (i%2)*8 + n; //mb_width?????
-						if(y >= vertical_size || x >= horizontal_size) continue;
-						frame[y][x].y = dct_recon[m][n];
-					}
-					else if(i < 6){
-						for(int k = 0; k < 4; k++){
-							int y = mb_row*16 + 2*m + k/2;
-							int x = mb_column*16 + 2*n + k%2;
+					int x, y;
+					switch(i){
+						case 0: case 1: case 2: case 3:
+							y = mb_row*16 + (int)(i/2)*8 + m; //mb_height?????
+							x = mb_column*16 + (i%2)*8 + n; //mb_width?????
 							if(y >= vertical_size || x >= horizontal_size) continue;
-							if(i == 4) frame[y][x].cb = dct_recon[m][n];
-							if(i == 5) frame[y][x].cr = dct_recon[m][n];
-						}
+							frame[y][x].y = dct_recon[m][n];
+							break;
+						case 4: case 5:
+							for(int k = 0; k < 4; k++){
+								y = mb_row*16 + 2*m + k/2;
+								x = mb_column*16 + 2*n + k%2;
+								if(y >= vertical_size || x >= horizontal_size) continue;
+								if(i == 4) frame[y][x].cb = dct_recon[m][n];
+								if(i == 5) frame[y][x].cr = dct_recon[m][n];
+							}
+							break;
+						default:
+							EXIT("MpegDecoder.read_block(): error.");
+							break;
 					}
-					else EXIT("MpegDecoder.read_block(): error.");
 				}
 			}
 			else{
-				// TODO:construct P-blocks
+				/*
+				fprintf(stderr, "!\n");
+				int right_for, down_for;
+				int right_half_for, down_half_for;
+				switch(i){
+					case 0: case 1: case 2: case 3:
+						right_for = recon_right_for >> 1;
+						down_for = recon_down_for >> 1;
+						right_half_for = recon_right_for - 2*right_for;
+						down_half_for = recon_down_for - 2*down_for;
+						EXIT("read_block(): error. //output");
+						break;
+					case 4: case 5:
+						right_for = (recon_right_for/2) >> 1;
+						down_for = (recon_down_for/2) >> 1;
+						right_half_for = recon_right_for/2 - 2*right_for;
+						down_half_for = recon_down_for/2 - 2*down_for;
+						EXIT("read_block(): error. //output");
+						break;
+					default:
+						EXIT("read_block(): error. //output");
+						break;
+				}
+				// TODO: Motion vectors leading to references outside a reference picture's boundaries are not allowed
+				fprintf(stderr, "!\n");
+				for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
+					if(!right_half_for && !down_half_for){
+						frame[m][n] = frame_past[m + down_for][n + right_for];
+					}
+					if(!right_half_for && down_half_for){
+						frame[m][n] = (frame_past[m + down_for][n + right_for] + frame_past[m + down_for + 1][n + right_for])/2;
+					}
+					if(right_half_for && !down_half_for){
+						frame[m][n] = (frame_past[m + down_for][n + right_for] + frame_past[m + down_for][n + right_for + 1])/2;
+					}
+					if(right_half_for && down_half_for){
+						frame[m][n] = (frame_past[m + down_for][n + right_for] + frame_past[m + down_for + 1][n + right_for] + frame_past[m + down_for][n + right_for + 1] + frame_past[m + down_for + 1][n + right_for + 1] )/4;
+					}
+				}
+				*/
 			}
 
 			return;
