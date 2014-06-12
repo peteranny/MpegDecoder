@@ -55,6 +55,10 @@ class MpegDecoder{
 					p.b = p1.b + p2.b;
 					return p;
 				}
+				friend Pixel &operator+=(Pixel &p1, const Pixel &p2){
+					p1 = p1 + p2;
+					return p1;
+				}
 				friend Pixel operator/(const Pixel &p1, const int i2){
 					Pixel p;
 					p.y = p1.y/i2;
@@ -64,6 +68,10 @@ class MpegDecoder{
 					p.g = p1.g/i2;
 					p.b = p1.b/i2;
 					return p;
+				}
+				friend Pixel &operator/=(Pixel &p1, const int i2){
+					p1 = p1/i2;
+					return p1;
 				}
 		};
 		int sequence_header_code;
@@ -1058,46 +1066,36 @@ class MpegDecoder{
 						down_for = recon_down_for >> 1;
 						right_half_for = recon_right_for - 2*right_for;
 						down_half_for = recon_down_for - 2*down_for;
+						for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
+							int y = mb_row*16 + (int)(i/2)*8 + m;
+							int x = mb_column*16 + (i%2)*8 + n;
+							if(y >= vertical_size || x >= horizontal_size) continue;
+							frame[y][x] = frame_past[y + down_for][x + right_for];
+							if(right_half_for) frame[y][x] += frame_past[y + down_for][x + right_for + 1];
+							if(down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for];
+							if(right_half_for && down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for + 1];
+							frame[y][x] /= (right_half_for? 2: 1)*(down_half_for? 2: 1);
+						}
 						break;
 					case 4: case 5:
 						right_for = (recon_right_for/2) >> 1;
 						down_for = (recon_down_for/2) >> 1;
 						right_half_for = recon_right_for/2 - 2*right_for;
 						down_half_for = recon_down_for/2 - 2*down_for;
+						for(int m = 0; m < 16; m++) for(int n = 0; n < 16; n++){
+							int y = mb_row*16 + m;
+							int x = mb_column*16 + n;
+							if(y >= vertical_size || x >= horizontal_size) continue;
+							frame[y][x] = frame_past[y + down_for][x + right_for];
+							if(right_half_for) frame[y][x] += frame_past[y + down_for][x + right_for + 1];
+							if(down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for];
+							if(right_half_for && down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for + 1];
+							frame[y][x] /= (right_half_for? 2: 1)*(down_half_for? 2: 1);
+						}
 						break;
 					default:
 						EXIT("read_block(): error. //output");
 						break;
-				}
-				for(int m = 0; m < 16; m++) for(int n = 0; n < 16; n++){
-					int y = mb_row*16 + m;
-					int x = mb_column*16 + n;
-					if(y >= vertical_size || x >= horizontal_size) continue;
-					if(!right_half_for && !down_half_for){
-						if(y + down_for >= vertical_size || y + down_for < 0) EXIT("read_block(): error. // !right_half_for && !down_half_for");
-						if(x + right_for >= horizontal_size || x + right_for < 0) EXIT("read_block(): error. // !right_half_for && !down_half_for");
-						frame[y][x] = frame_past[y + down_for][x + right_for];
-					}
-					if(!right_half_for && down_half_for){
-						if(y + down_for >= vertical_size || y + down_for < 0) EXIT("read_block(): error. // !right_half_for && down_half_for");
-						if(y + down_for + 1 >= vertical_size || y + down_for + 1 < 0) EXIT("read_block(): error. // !right_half_for && down_half_for");
-						if(x + right_for >= horizontal_size || x + right_for < 0) EXIT("read_block(): error. // !right_half_for && down_half_for");
-						frame[y][x] = (frame_past[y + down_for][x + right_for] + frame_past[y + down_for + 1][x + right_for])/2;
-					}
-					if(right_half_for && !down_half_for){
-						if(y + down_for >= vertical_size || y + down_for < 0) EXIT("read_block(): error. // right_half_for && !down_half_for");
-						if(x + right_for >= horizontal_size || x + right_for < 0) EXIT("read_block(): error. // right_half_for && !down_half_for");
-						if(x + right_for + 1 >= horizontal_size || x + right_for + 1 < 0) EXIT("read_block(): error. // right_half_for && !down_half_for");
-						frame[y][x] = (frame_past[y + down_for][x + right_for] + frame_past[y + down_for][x + right_for + 1])/2;
-					}
-					if(right_half_for && down_half_for){
-						if(y + down_for >= vertical_size || y + down_for < 0) EXIT("read_block(): error. // right_half_for && down_half_for");
-						if(y + down_for + 1 >= vertical_size || y + down_for + 1 < 0) EXIT("read_block(): error. // right_half_for && down_half_for");
-						if(x + right_for >= horizontal_size || x + right_for < 0) EXIT("read_block(): error. // right_half_for && down_half_for");
-						if(x + right_for + 1 >= horizontal_size || x + right_for + 1 < 0) EXIT("read_block(): error. // right_half_for && down_half_for");
-						frame[y][x] = (frame_past[y + down_for][x + right_for] + frame_past[y + down_for][x + right_for + 1])/2;
-						frame[y][x] = (frame_past[y + down_for][x + right_for] + frame_past[y + down_for + 1][x + right_for] + frame_past[y + down_for][x + right_for + 1] + frame_past[y + down_for + 1][x + right_for + 1] )/4;
-					}
 				}
 			}
 
