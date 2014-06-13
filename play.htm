@@ -1,18 +1,18 @@
 <html>
 	<head></head>
 	<body>
-		<hr id="progress" align="left" size="10" color="green">
-		<img>
+		<hr id="progress" align="left" size="10" width="1" color="green">
+		<img style="display:none;" onload="document.images[1].src=this.src;document.images[1].style.display='';i=(i+1)%(max_i+1);">
+		<img style="display:none;">
 		<script>
 			var dt = 30;
 			var i = 0;
 			var max_i = 119;
 			var dir = "test/";
+			var isConti = true;
 			setInterval(function(){
 				document.getElementById('progress').width = (((i + 1)/(max_i + 1))*100).toPrecision(2) + "%";
 				document.images[0].src = dir + i + ".bmp";
-				i++;
-				i = i%(max_i + 1);
 			}, dt);
 		</script>
 	</body>

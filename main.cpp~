@@ -69,6 +69,10 @@ class MpegDecoder{
 					p.b = p1.b/i2;
 					return p;
 				}
+				friend Pixel &operator/=(Pixel &p1, const int i2){
+					p1 = p1/i2;
+					return p1;
+				}
 		};
 		int sequence_header_code;
 		int horizontal_size;
@@ -104,6 +108,9 @@ class MpegDecoder{
 			for(int i = 0; i < vertical_size; i++) frame[i] = new Pixel[horizontal_size];
 			frame_past = new Pixel*[vertical_size];
 			for(int i = 0; i < vertical_size; i++) frame_past[i] = new Pixel[horizontal_size];
+			dct_zz = new int[64];
+			dct_recon = new int*[8];
+			for(int j = 0; j < 8; j++) dct_recon[j] = new int[8];
 
 			pel_aspect_ratio = mpegFile.read_bits_as_num(4);
 			// UNDONE
@@ -783,11 +790,11 @@ class MpegDecoder{
 			fprintf(stderr, "\n");
 			return;
 		}
-		void idct_block(int block[8][8]){
+		void idct_block(){
 			double tmp[8][8];
 			int r, c;
 			for(r = 0; r < 8; r++) for(c = 0; c < 8; c++){
-				tmp[r][c] = (double)block[r][c];
+				tmp[r][c] = (double)dct_recon[r][c];
 			}
 
 			double F[8], f[8];
@@ -802,7 +809,7 @@ class MpegDecoder{
 				for(r = 0; r < 8; r++) tmp[r][c] = f[r];
 			}
 			for(r = 0; r < 8; r++) for(c = 0; c < 8; c++){
-				block[r][c] = round(tmp[r][c]);
+				dct_recon[r][c] = round(tmp[r][c]);
 			}
 			return;
 		}
@@ -848,12 +855,15 @@ class MpegDecoder{
 		int dct_coeff_first;
 		static const int scan[8][8];
 		static const int scan_reverse[64];
+		int *dct_zz;
+		int dct_zz_i;
 		int dct_dc_y_past;
 		int dct_dc_cb_past;
 		int dct_dc_cr_past;
+		int **dct_recon;
 	public:
 		void read_block(int i){
-			int dct_zz[64], dct_zz_i = 0;
+			dct_zz_i = 0;
 			for(int j = 0; j < 64; j++) dct_zz[j] = 0;
 
 			if(pattern_code[i]){
@@ -987,114 +997,190 @@ class MpegDecoder{
 
 			// decoding...
 			if(macroblock_intra){
-				int dct_recon[8][8];
-				for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
-					dct_recon[m][n] = 2*dct_zz[scan[m][n]]*quantizer_scale*intra_quantizer_matrix[m][n]/16;
-					if((dct_recon[m][n] & 1) == 0){
-						dct_recon[m][n] -= (dct_recon[m][n] == 0)? 0: (dct_recon[m][n] > 0)? 1: -1;
-					}
-					if(dct_recon[m][n] > 2047){
-						dct_recon[m][n] = 2047;
-					}
-					if(dct_recon[m][n] < -2048){
-						dct_recon[m][n] = -2048;
-					}
-				}
-
-				switch(i){
-					case 0: case 1: case 2: case 3:
-						dct_recon[0][0] = dct_zz[0]*8 + dct_dc_y_past;
-						dct_dc_y_past = dct_recon[0][0];
-						break;
-					case 4:
-						dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cb_past;
-						dct_dc_cb_past = dct_recon[0][0];
-						break;
-					case 5:
-						dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cr_past;
-						dct_dc_cr_past = dct_recon[0][0];
-						break;
-					default:
-						EXIT("MpegDecoder.read_block(): error. // dct_recon[0][0]");
-						break;
-				}
-				// idct
-				idct_block(dct_recon);
-
-				// clipping
-				for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
-					if(dct_recon[m][n] > 255) dct_recon[m][n] = 255;
-					if(dct_recon[m][n] < 0) dct_recon[m][n] = 0;
-				}
-				//print_block(&dct_recon[0][0], false);
-
-				// posit block in frame
-				for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
-					int x, y;
-					switch(i){
-						case 0: case 1: case 2: case 3:
-							y = mb_row*16 + (int)(i/2)*8 + m; //mb_height?????
-							x = mb_column*16 + (i%2)*8 + n; //mb_width?????
-							if(y >= vertical_size || x >= horizontal_size) continue;
-							frame[y][x].y = dct_recon[m][n];
-							break;
-						case 4: case 5:
-							for(int k = 0; k < 4; k++){
-								y = mb_row*16 + 2*m + k/2;
-								x = mb_column*16 + 2*n + k%2;
-								if(y >= vertical_size || x >= horizontal_size) continue;
-								if(i == 4) frame[y][x].cb = dct_recon[m][n];
-								if(i == 5) frame[y][x].cr = dct_recon[m][n];
-							}
-							break;
-						default:
-							EXIT("MpegDecoder.read_block(): error.");
-							break;
-					}
-				}
+				intra_block_decode(i);
 			}
 			else{
-				int right_for, down_for;
-				int right_half_for, down_half_for;
-				switch(i){
-					case 0: case 1: case 2: case 3:
-						right_for = recon_right_for >> 1;
-						down_for = recon_down_for >> 1;
-						right_half_for = recon_right_for - 2*right_for;
-						down_half_for = recon_down_for - 2*down_for;
-						for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
-							int y = mb_row*16 + (int)(i/2)*8 + m;
-							int x = mb_column*16 + (i%2)*8 + n;
-							if(y >= vertical_size || x >= horizontal_size) continue;
-							frame[y][x] = frame_past[y + down_for][x + right_for];
-							if(right_half_for) frame[y][x] += frame_past[y + down_for][x + right_for + 1];
-							if(down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for];
-							if(right_half_for && down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for + 1];
-							frame[y][x] /= (right_half_for? 2: 1)*(down_half_for? 2: 1);
-						}
-						break;
-					case 4: case 5:
-						right_for = (recon_right_for/2) >> 1;
-						down_for = (recon_down_for/2) >> 1;
-						right_half_for = recon_right_for/2 - 2*right_for;
-						down_half_for = recon_down_for/2 - 2*down_for;
-						for(int m = 0; m < 16; m++) for(int n = 0; n < 16; n++){
-							int y = mb_row*16 + m;
-							int x = mb_column*16 + n;
-							if(y >= vertical_size || x >= horizontal_size) continue;
-							frame[y][x] = frame_past[y + down_for][x + right_for];
-							if(right_half_for) frame[y][x] += frame_past[y + down_for][x + right_for + 1];
-							if(down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for];
-							if(right_half_for && down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for + 1];
-							frame[y][x] /= (right_half_for? 2: 1)*(down_half_for? 2: 1);
-						}
-						break;
-					default:
-						EXIT("read_block(): error. //output");
-						break;
+				ref_using_motion_vec(i);
+				non_intra_block_decode(i);
+			}
+			return;
+		}
+		void intra_block_decode(int i){
+			for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
+				dct_recon[m][n] = 2*dct_zz[scan[m][n]]*quantizer_scale*intra_quantizer_matrix[m][n]/16;
+				if((dct_recon[m][n] & 1) == 0){
+					dct_recon[m][n] -= (dct_recon[m][n] == 0)? 0: (dct_recon[m][n] > 0)? 1: -1;
+				}
+				if(dct_recon[m][n] > 2047){
+					dct_recon[m][n] = 2047;
+				}
+				if(dct_recon[m][n] < -2048){
+					dct_recon[m][n] = -2048;
 				}
 			}
 
+			switch(i){
+				case 0: case 1: case 2: case 3:
+					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_y_past;
+					dct_dc_y_past = dct_recon[0][0];
+					break;
+				case 4:
+					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cb_past;
+					dct_dc_cb_past = dct_recon[0][0];
+					break;
+				case 5:
+					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cr_past;
+					dct_dc_cr_past = dct_recon[0][0];
+					break;
+				default:
+					EXIT("MpegDecoder.read_block(): error. // dct_recon[0][0]");
+													break;
+			}
+
+			// idct
+			idct_block();
+
+			// clipping
+			for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
+				if(dct_recon[m][n] > 255) dct_recon[m][n] = 255;
+				if(dct_recon[m][n] < 0) dct_recon[m][n] = 0;
+			}
+			//print_block(&dct_recon[0][0], false);
+
+			// posit block in frame
+			for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
+				int x, y;
+				switch(i){
+					case 0: case 1: case 2: case 3:
+						y = mb_row*16 + (int)(i/2)*8 + m; //mb_height?????
+						x = mb_column*16 + (i%2)*8 + n; //mb_width?????
+						if(y >= vertical_size || x >= horizontal_size) continue;
+						frame[y][x].y = dct_recon[m][n];
+						break;
+					case 4: case 5:
+						for(int k = 0; k < 4; k++){
+							y = mb_row*16 + 2*m + k/2;
+							x = mb_column*16 + 2*n + k%2;
+							if(y >= vertical_size || x >= horizontal_size) continue;
+							if(i == 4) frame[y][x].cb = dct_recon[m][n];
+							if(i == 5) frame[y][x].cr = dct_recon[m][n];
+						}
+						break;
+					default:
+						EXIT("MpegDecoder.read_block(): error.");
+						break;
+				}
+			}
+			return;
+		}
+		void ref_using_motion_vec(int i){
+			int right_for, down_for;
+			int right_half_for, down_half_for;
+			switch(i){
+				case 0: case 1: case 2: case 3:
+					right_for = recon_right_for >> 1;
+					down_for = recon_down_for >> 1;
+					right_half_for = recon_right_for - 2*right_for;
+					down_half_for = recon_down_for - 2*down_for;
+					for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
+						int y = mb_row*16 + (int)(i/2)*8 + m;
+						int x = mb_column*16 + (i%2)*8 + n;
+						if(y >= vertical_size || x >= horizontal_size) continue;
+						frame[y][x] = frame_past[y + down_for][x + right_for];
+						if(right_half_for) frame[y][x] += frame_past[y + down_for][x + right_for + 1];
+						if(down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for];
+						if(right_half_for && down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for + 1];
+						frame[y][x] /= (right_half_for? 2: 1)*(down_half_for? 2: 1);
+					}
+					break;
+				case 4: case 5:
+					right_for = (recon_right_for/2) >> 1;
+					down_for = (recon_down_for/2) >> 1;
+					right_half_for = recon_right_for/2 - 2*right_for;
+					down_half_for = recon_down_for/2 - 2*down_for;
+					for(int m = 0; m < 16; m++) for(int n = 0; n < 16; n++){
+						int y = mb_row*16 + m;
+						int x = mb_column*16 + n;
+						if(y >= vertical_size || x >= horizontal_size) continue;
+						frame[y][x] = frame_past[y + down_for][x + right_for];
+						if(right_half_for) frame[y][x] += frame_past[y + down_for][x + right_for + 1];
+						if(down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for];
+						if(right_half_for && down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for + 1];
+						frame[y][x] /= (right_half_for? 2: 1)*(down_half_for? 2: 1);
+					}
+					break;
+				default:
+					EXIT("read_block(): error. //output");
+					break;
+			}
+			return;
+		}
+		void non_intra_block_decode(int i){
+			for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
+				dct_recon[m][n] = 2*dct_zz[scan[m][n]]*quantizer_scale*intra_quantizer_matrix[m][n]/16;
+				if((dct_recon[m][n] & 1) == 0){
+					dct_recon[m][n] -= (dct_recon[m][n] == 0)? 0: (dct_recon[m][n] > 0)? 1: -1;
+				}
+				if(dct_recon[m][n] > 2047){
+					dct_recon[m][n] = 2047;
+				}
+				if(dct_recon[m][n] < -2048){
+					dct_recon[m][n] = -2048;
+				}
+			}
+
+			switch(i){
+				case 0: case 1: case 2: case 3:
+					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_y_past;
+					dct_dc_y_past = dct_recon[0][0];
+					break;
+				case 4:
+					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cb_past;
+					dct_dc_cb_past = dct_recon[0][0];
+					break;
+				case 5:
+					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cr_past;
+					dct_dc_cr_past = dct_recon[0][0];
+					break;
+				default:
+					EXIT("MpegDecoder.read_block(): error. // dct_recon[0][0]");
+													break;
+			}
+
+			// idct
+			idct_block();
+
+			// clipping
+			for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
+				if(dct_recon[m][n] > 255) dct_recon[m][n] = 255;
+				if(dct_recon[m][n] < 0) dct_recon[m][n] = 0;
+			}
+			//print_block(&dct_recon[0][0], false);
+
+			// posit block in frame
+			for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
+				int x, y;
+				switch(i){
+					case 0: case 1: case 2: case 3:
+						y = mb_row*16 + (int)(i/2)*8 + m; //mb_height?????
+						x = mb_column*16 + (i%2)*8 + n; //mb_width?????
+						if(y >= vertical_size || x >= horizontal_size) continue;
+						frame[y][x].y = dct_recon[m][n];
+						break;
+					case 4: case 5:
+						for(int k = 0; k < 4; k++){
+							y = mb_row*16 + 2*m + k/2;
+							x = mb_column*16 + 2*n + k%2;
+							if(y >= vertical_size || x >= horizontal_size) continue;
+							if(i == 4) frame[y][x].cb = dct_recon[m][n];
+							if(i == 5) frame[y][x].cr = dct_recon[m][n];
+						}
+						break;
+					default:
+						EXIT("MpegDecoder.read_block(): error.");
+						break;
+				}
+			}
 			return;
 		}
 	private:
