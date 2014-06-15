@@ -97,6 +97,8 @@ class MpegDecoder{
 		int non_intra_quantizer_matrix[8][8];
 	public:
 		void read_sequence_header(){
+			fprintf(stderr, "read_sequence_start()...\n");
+
 			sequence_header_code = mpegFile.read_bits_as_num(4*8);
 			if(sequence_header_code != SEQUENCE_HEADER_CODE){
 				EXIT("MpegDecoder.read_sequence_header(): error");
@@ -183,7 +185,13 @@ class MpegDecoder{
 			}
 
 			next_start_code();
-			return;
+
+			if(nextbits(4*8) == EXTENSION_START_CODE){
+				EXIT("mpeg.read() error //extension_start_code");
+			}
+			if(nextbits(4*8) == USER_DATA_START_CODE){
+				EXIT("mpeg.read() error //user_data_start_code");
+			}
 		}
 	private:
 		int group_start_code;
@@ -217,6 +225,19 @@ class MpegDecoder{
 			// UNDONE: reference group not available, for editting
 			
 			next_start_code();
+
+			if(nextbits(4*8) == EXTENSION_START_CODE){
+				EXIT("mpeg.read() error //extension_start_code");
+			}
+			if(nextbits(4*8) == USER_DATA_START_CODE){
+				EXIT("mpeg.read() error //user_data_start_code");
+			}
+
+			while(nextbits(4*8) == PICTURE_START_CODE){
+				read_picture_start();
+			}
+
+			fprintf(stderr, "read_sequence_start()... done.\n");
 			return;
 		}
 	private:
@@ -236,6 +257,8 @@ class MpegDecoder{
 		int extra_information_picture;
 	public:
 		void read_picture_start(){
+			fprintf(stderr, "read_picture_start()...\n");
+
 			picture_start_code = mpegFile.read_bits_as_num(4*8);
 			if(picture_start_code != PICTURE_START_CODE){
 				EXIT("MpegDecoder.read_picture_start(): error");
@@ -260,7 +283,6 @@ class MpegDecoder{
 			fprintf(stderr, "read_picture_start(): vbv_delay=%d\n", vbv_delay);
 			// UNDONE
 			
-			// I-frame or B-frame
 			if(picture_coding_type == 2 || picture_coding_type == 3){
 				full_pel_forward_vector = mpegFile.read_bits_as_num(1);
 				fprintf(stderr, "read_picture_start(): full_pel_forward_vector=%d\n", full_pel_forward_vector);
@@ -270,7 +292,6 @@ class MpegDecoder{
 				forward_f = 1 << forward_r_size;
 			}
 
-			// B-frame
 			if(picture_coding_type == 3){
 				full_pel_backward_vector = mpegFile.read_bits_as_num(1);
 				backward_f_code = mpegFile.read_bits_as_num(3);
@@ -289,8 +310,44 @@ class MpegDecoder{
 			}
 			extra_bit_picture = mpegFile.read_bits_as_num(1);
 			fprintf(stderr, "read_picture_start(): extra_bit_picture=%d\n", extra_bit_picture);
-	
+
 			next_start_code();
+
+			if(nextbits(4*8) == EXTENSION_START_CODE){
+				EXIT("mpeg.read() error //extension_start_code");
+			}
+			if(nextbits(4*8) == USER_DATA_START_CODE){
+				EXIT("mpeg.read() error //user_data_start_code");
+			}
+
+			while(SLICE_START_CODE(nextbits(4*8))){
+				read_slice_start();
+			}
+
+			// make R, G, B
+			int r[vertical_size][horizontal_size];
+			int g[vertical_size][horizontal_size];
+			int b[vertical_size][horizontal_size];
+			for(int i = 0; i < vertical_size; i++) for(int j = 0; j < horizontal_size; j++){
+				frame[i][j].make_rgb();
+				r[i][j] = frame[i][j].r;
+				g[i][j] = frame[i][j].g;
+				b[i][j] = frame[i][j].b;
+			}
+
+			// generate bmp file.
+			char bmppath[1024];
+			sprintf(bmppath, "%s/%d.bmp", dir_name, frame_i++);
+			bmpMaker.make(bmppath, &r[0][0], &g[0][0], &b[0][0], horizontal_size, vertical_size);
+
+			// buffer for non intra frame
+			if(picture_coding_type == 2){
+				for(int i = 0; i < vertical_size; i++){
+					memcpy(frame_future[i], frame[i], sizeof(Pixel)*horizontal_size);
+				}
+			}
+
+			fprintf(stderr, "read_picture_start()... done.\n");
 			return;
 		}
 	private:
@@ -301,10 +358,13 @@ class MpegDecoder{
 		int extra_information_slice;
 	public:
 		void read_slice_start(){
+			fprintf(stderr, "read_slice_start()...\n");
+
 			slice_start_code = mpegFile.read_bits_as_num(4*8);
 			if(!SLICE_START_CODE(slice_start_code)){
 				EXIT("MpegDecoder.read_slice_start(): error");
 			}
+
 			slice_vertical_position = slice_start_code&0x000000FF;
 			fprintf(stderr, "read_slice_start(): slice_start_code=%d (slice_vertical_position=%d)\n", slice_start_code, slice_vertical_position);
 
@@ -337,34 +397,12 @@ class MpegDecoder{
 			}
 
 			while(nextbits(23) != 0){ // b00000000000000000000000
-				fprintf(stderr, "read_slice_start(): new macroblock...\n");
 				read_macroblock();
 			}
 
-			// make R, G, B
-			int r[vertical_size][horizontal_size];
-			int g[vertical_size][horizontal_size];
-			int b[vertical_size][horizontal_size];
-			for(int i = 0; i < vertical_size; i++) for(int j = 0; j < horizontal_size; j++){
-				frame[i][j].make_rgb();
-				r[i][j] = frame[i][j].r;
-				g[i][j] = frame[i][j].g;
-				b[i][j] = frame[i][j].b;
-			}
-
-			// generate bmp file.
-			char bmppath[1024];
-			sprintf(bmppath, "%s/%d.bmp", dir_name, temporal_reference);
-			bmpMaker.make(bmppath, &r[0][0], &g[0][0], &b[0][0], horizontal_size, vertical_size);
-
-			// buffer for non intra frame
-			if(picture_coding_type == 2){
-				for(int i = 0; i < vertical_size; i++){
-					memcpy(frame_future[i], frame[i], sizeof(Pixel)*horizontal_size);
-				}
-			}
-
 			next_start_code();
+
+			fprintf(stderr, "read_slice_start()... done.\n");
 			return;
 		}
 	private:
@@ -398,6 +436,8 @@ class MpegDecoder{
 		int recon_down_back_prev;
 	public:
 		void read_macroblock(){
+			fprintf(stderr, "read_macroblock()...\n");
+
 			while(true){
 				static Huffman *macroblock_address_increment_huff = NULL;
 				if(!macroblock_address_increment_huff){
@@ -766,6 +806,7 @@ class MpegDecoder{
 				recon_down_back_prev = (picture_coding_type == 3 && macroblock_intra)? 0: recon_down_back;
 			}
 
+			fprintf(stderr, "read_macroblock()... done.\n");
 			return;
 		}
 		void calc_motion_vec(int &f, int &r_size, int &full_pel_vector, int &recon_for, int &recon_for_prev){
@@ -1361,6 +1402,21 @@ class MpegDecoder{
 		}
 	public:
 		void read(){
+			while(nextbits(4*8) == SEQUENCE_HEADER_CODE){
+				read_sequence_header();
+				while(nextbits(4*8) == GROUP_START_CODE){
+					read_group_start();
+				}
+			}
+			if(nextbits(4*8) == SEQUENCE_END_CODE){
+				fprintf(stderr, "Done.\n");
+			}
+			else{
+				EXIT("read(): error. //sequence_end_code");
+			}
+			/*
+					do{
+				int 
 			int ret;
 			while((ret = nextbits(4*8)) != -1){
 				switch(ret){
@@ -1390,16 +1446,18 @@ class MpegDecoder{
 						break;
 					default:
 						if(SLICE_START_CODE(ret)){
-							fprintf(stderr, "slice_start_code... i=%d\n\n", temporal_reference);
+							fprintf(stderr, "slice_start_code... i=%d\n\n", frame_i);
 							read_slice_start();
-							fprintf(stderr, "slice_start_code done. i=%d\n\n", temporal_reference);
+							fprintf(stderr, "slice_start_code done. i=%d\n\n", frame_i);
+							frame_i++;
 							break;
 						}
 						EXIT("MpegDecoder.read(): error.");
 						break;
 				}
-			}
+}
 			fprintf(stderr, "DONE.\n");
+			*/
 			return;
 		}
 };
@@ -1409,30 +1467,11 @@ int main(int argc, char *argv[]){
 	char *inputName = argv[1], *outputName = argv[2];
 
 	MpegDecoder md(inputName);
-	//mpegFile = fopen(inputName, "rb"); if(!jpegFile) EXIT("mpegFile error.");
 	md.read();
-
-	/*
-	bmpFile = fopen(outputName, "wb"); if(!bmpFile) EXIT("bmpFile error.");
-	bmp_make(jpeg_img[0], jpeg_img[1], jpeg_img[2], jpeg_frame_x, jpeg_frame_y);
-	fclose(bmpFile);
-	*/
 
 	return 0;
 }
 
-/*
-const int MpegDecoder::posi_in_zz[64] = {
-	0, 1, 5, 6, 14, 15, 27, 28,
-	2, 4, 7, 13, 16, 26, 29, 42,
-	3, 8, 12, 17, 25, 30, 41, 43,
-	9, 11, 18, 24, 31, 40, 44, 53,
-	10, 19, 23, 32, 39, 45, 52, 54,
-	20, 22, 33, 38, 46, 51, 55, 60,
-	21, 34, 37, 47, 50, 56, 59, 61,
-	35, 36, 48, 49, 57, 58, 62, 63
-};
-*/
 const int MpegDecoder::scan_reverse[64] = {
 	0, 1, 8, 16, 9, 2, 3, 10,
 	17, 24, 32, 25, 18, 11, 4, 5,

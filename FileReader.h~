@@ -52,12 +52,12 @@ class FileReader{
 		bool read(int nBytes, unsigned char *buf){//, bool rmFF00 = false){
 			//fprintf(stderr, "read(): nBytes=%d\n", nBytes);
 			for(int i = 0; i < nBytes; i++){
-				buf[i] = cur_byte;
 				if(filebuflen == 0 && feof(file)){
 					// meaning that cur_byte is EOF
-					fprintf(stderr, "FileReader: read(): eof\n");
+					fprintf(stderr, "read(): eof\n");
 					return false;
 				}
+				buf[i] = cur_byte;
 
 				// read from buffer
 				if(filebuflen > 0){
@@ -86,7 +86,7 @@ class FileReader{
 					}
 					*/
 				}
-				//fprintf(stderr, "FileReader.read(): buf[%d]=%02X, cur=%02X, posi=%d\n", i, buf[i], cur_byte, cur_posi_in_byte);
+				fprintf(stderr, "FileReader.read(): buf[%d]=%02X, cur=%02X, posi=%d\n", i, buf[i], cur_byte, cur_posi_in_byte);
 			}
 			return true;
 		}
