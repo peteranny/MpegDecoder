@@ -45,6 +45,9 @@ class MpegDecoder{
 					if(g < 0) g = 0;
 					if(b < 0) b = 0;
 				}
+				void reset(){
+					r = g = b = y = cb = cr = 0;
+				}
 				friend Pixel operator+(const Pixel &p1, const Pixel &p2){
 					Pixel p;
 					p.y = p1.y + p2.y;
@@ -81,6 +84,7 @@ class MpegDecoder{
 		int mb_height;
 		Pixel **frame;
 		Pixel **frame_past;
+		Pixel **frame_future;
 		int pel_aspect_ratio;
 		int picture_rate;
 		int bit_rate;
@@ -108,6 +112,8 @@ class MpegDecoder{
 			for(int i = 0; i < vertical_size; i++) frame[i] = new Pixel[horizontal_size];
 			frame_past = new Pixel*[vertical_size];
 			for(int i = 0; i < vertical_size; i++) frame_past[i] = new Pixel[horizontal_size];
+			frame_future = new Pixel*[vertical_size];
+			for(int i = 0; i < vertical_size; i++) frame_future[i] = new Pixel[horizontal_size];
 			dct_zz = new int[64];
 			dct_recon = new int*[8];
 			for(int j = 0; j < 8; j++) dct_recon[j] = new int[8];
@@ -268,7 +274,9 @@ class MpegDecoder{
 			if(picture_coding_type == 3){
 				full_pel_backward_vector = mpegFile.read_bits_as_num(1);
 				backward_f_code = mpegFile.read_bits_as_num(3);
-				EXIT("MpegDecoder.read_picture_start(): error. // backward_f_code=0");
+				fprintf(stderr, "read_picture_start(): backward_f_code=%d\n", backward_f_code);
+				backward_r_size = backward_f_code - 1;
+				backward_f = 1 << backward_r_size;
 			}
 
 			while(nextbits(1) == 1){ // b1
@@ -303,13 +311,15 @@ class MpegDecoder{
 			quantizer_scale = mpegFile.read_bits_as_num(5);
 			fprintf(stderr, "read_slice_start(): quantizer_scale=%d\n", quantizer_scale);
 			// initailize
+			previous_macroblock_address = (slice_vertical_position - 1)*mb_width - 1;
+			past_intra_address = -2;
 			dct_dc_y_past = 128*8;
 			dct_dc_cb_past = 128*8;
 			dct_dc_cr_past = 128*8;
-			previous_macroblock_address = (slice_vertical_position - 1)*mb_width - 1;
-			past_intra_address = -2;
 			recon_right_for_prev = 0;
 			recon_down_for_prev = 0;
+			recon_right_back_prev = 0;
+			recon_down_back_prev = 0;
 
 			while(nextbits(1) == 1){ // b1
 				extra_bit_slice = mpegFile.read_bits_as_num(1);
@@ -319,6 +329,12 @@ class MpegDecoder{
 			}
 			extra_bit_slice = mpegFile.read_bits_as_num(1);
 			fprintf(stderr, "read_slice_start(): extra_bit_slice=%d\n", extra_bit_slice);
+
+			if(picture_coding_type != 3){
+				for(int i = 0; i < vertical_size; i++){
+					memcpy(frame_past[i], frame_future[i], sizeof(Pixel)*horizontal_size);
+				}
+			}
 
 			while(nextbits(23) != 0){ // b00000000000000000000000
 				fprintf(stderr, "read_slice_start(): new macroblock...\n");
@@ -338,12 +354,14 @@ class MpegDecoder{
 
 			// generate bmp file.
 			char bmppath[1024];
-			sprintf(bmppath, "%s/%d.bmp", dir_name, frame_i);
+			sprintf(bmppath, "%s/%d.bmp", dir_name, temporal_reference);
 			bmpMaker.make(bmppath, &r[0][0], &g[0][0], &b[0][0], horizontal_size, vertical_size);
 
 			// buffer for non intra frame
-			for(int i = 0; i < vertical_size; i++){
-				memcpy(frame_past[i], frame[i], sizeof(Pixel)*horizontal_size);
+			if(picture_coding_type == 2){
+				for(int i = 0; i < vertical_size; i++){
+					memcpy(frame_future[i], frame[i], sizeof(Pixel)*horizontal_size);
+				}
 			}
 
 			next_start_code();
@@ -367,22 +385,17 @@ class MpegDecoder{
 		int macroblock_motion_backward;
 		int macroblock_pattern;
 		int macroblock_intra;
-		int macroblock_motion_forward_code;
-		int motion_horizontal_forward_code;
-		int motion_horizontal_forward_r;
-		int motion_vertical_forward_code;
-		int motion_vertical_forward_r;
-		int macroblock_motion_backward_code;
-		int motion_horizontal_backward_code;
-		int motion_horizontal_backward_r;
-		int motion_vertical_backward_code;
-		int motion_vertical_backward_r;
+
 		int pattern_code[6];
 		int coded_block_pattern;
 		int recon_right_for;
 		int recon_down_for;
 		int recon_right_for_prev;
 		int recon_down_for_prev;
+		int recon_right_back;
+		int recon_down_back;
+		int recon_right_back_prev;
+		int recon_down_back_prev;
 	public:
 		void read_macroblock(){
 			while(true){
@@ -402,30 +415,19 @@ class MpegDecoder{
 				break;
 			}
 
-			for(int i = 0; i < macroblock_address_increment; i++){
+			for(int j = 0; j < macroblock_address_increment; j++){
 				macroblock_address = previous_macroblock_address + 1;
 				fprintf(stderr, "read_macroblock(): macroblock_address=%d\n", macroblock_address);
 				mb_row = macroblock_address/mb_width;
 				mb_column = macroblock_address%mb_width;
-				// skipped macroblock
-				if(i < macroblock_address_increment - 1){
-					if(picture_coding_type == 2){ // P frame skipped macroblock
-						recon_right_for = 0;
-						recon_down_for = 0;
-						int y = mb_row*16;
-						int x = mb_column*16;
-						for(int m = 0; m < 16; m++) for(int n = 0; n < 16; n++){
-							frame[y + m][x + n] = frame_past[y + m][x + n];
-						}
-					}
-				}
+				bool skipped_macroblock = j < macroblock_address_increment - 1;
 				// process macroblock
-				else{
+				if(!skipped_macroblock){
 					switch(picture_coding_type){
 						case 1: // intra-coded (I)
 							static Huffman *macroblock_type_I_huff = NULL;
 							if(!macroblock_type_I_huff){
-#include "macroblock_type_I_huff.h"
+								#include "macroblock_type_I_huff.h"
 							}
 							macroblock_type = huffman_decode(macroblock_type_I_huff);
 							switch(macroblock_type){
@@ -450,7 +452,7 @@ class MpegDecoder{
 						case 2: // predictive-coded (P)
 							static Huffman *macroblock_type_P_huff = NULL;
 							if(!macroblock_type_P_huff){
-#include "macroblock_type_P_huff.h"
+								#include "macroblock_type_P_huff.h"
 							}
 							macroblock_type = huffman_decode(macroblock_type_P_huff);
 							fprintf(stderr, "read_macroblock(): macroblock_type=");macroblock_type_P_huff->print_codeword(macroblock_type);fprintf(stderr, "\n");
@@ -511,129 +513,177 @@ class MpegDecoder{
 							fprintf(stderr, "read_macroblock(); macroblock_pattern=%d\n", macroblock_pattern);
 							fprintf(stderr, "read_macroblock(); macroblock_intra=%d\n", macroblock_intra);
 							break;
+						case 3: // bidirectionally predictive-coded (B)
+							static Huffman *macroblock_type_B_huff = NULL;
+							if(!macroblock_type_B_huff){
+								#include "macroblock_type_B_huff.h"
+							}
+							macroblock_type = huffman_decode(macroblock_type_B_huff);
+							fprintf(stderr, "read_macroblock(): macroblock_type=");macroblock_type_B_huff->print_codeword(macroblock_type);fprintf(stderr, "\n");
+							switch(macroblock_type){
+								case 1: // 10
+									macroblock_quant = 0;
+									macroblock_motion_forward = 1;
+									macroblock_motion_backward = 1;
+									macroblock_pattern = 0;
+									macroblock_intra = 0;
+									break;
+								case 2: // 11
+									macroblock_quant = 0;
+									macroblock_motion_forward = 1;
+									macroblock_motion_backward = 1;
+									macroblock_pattern = 1;
+									macroblock_intra = 0;
+									break;
+								case 3: // 010
+									macroblock_quant = 0;
+									macroblock_motion_forward = 0;
+									macroblock_motion_backward = 1;
+									macroblock_pattern = 0;
+									macroblock_intra = 0;
+									break;
+								case 4: // 011
+									macroblock_quant = 0;
+									macroblock_motion_forward = 0;
+									macroblock_motion_backward = 1;
+									macroblock_pattern = 1;
+									macroblock_intra = 0;
+									break;
+								case 5: // 0010
+									macroblock_quant = 0;
+									macroblock_motion_forward = 1;
+									macroblock_motion_backward = 0;
+									macroblock_pattern = 0;
+									macroblock_intra = 0;
+									break;
+								case 6: // 0011
+									macroblock_quant = 0;
+									macroblock_motion_forward = 1;
+									macroblock_motion_backward = 0;
+									macroblock_pattern = 1;
+									macroblock_intra = 0;
+									break;
+								case 7: // 00011
+									macroblock_quant = 0;
+									macroblock_motion_forward = 0;
+									macroblock_motion_backward = 0;
+									macroblock_pattern = 0;
+									macroblock_intra = 1;
+									break;
+								case 8: // 00010
+									macroblock_quant = 1;
+									macroblock_motion_forward = 1;
+									macroblock_motion_backward = 1;
+									macroblock_pattern = 1;
+									macroblock_intra = 0;
+									break;
+								case 9: // 000011
+									macroblock_quant = 1;
+									macroblock_motion_forward = 1;
+									macroblock_motion_backward = 0;
+									macroblock_pattern = 1;
+									macroblock_intra = 0;
+									break;
+								case 10: // 000010
+									macroblock_quant = 1;
+									macroblock_motion_forward = 0;
+									macroblock_motion_backward = 1;
+									macroblock_pattern = 1;
+									macroblock_intra = 0;
+									break;
+								case 11: // 000001
+									macroblock_quant = 1;
+									macroblock_motion_forward = 0;
+									macroblock_motion_backward = 0;
+									macroblock_pattern = 0;
+									macroblock_intra = 1;
+									break;
+							}
+							fprintf(stderr, "read_macroblock(); macroblock_quant=%d\n", macroblock_quant);
+							fprintf(stderr, "read_macroblock(); macroblock_motion_forward=%d\n", macroblock_motion_forward);
+							fprintf(stderr, "read_macroblock(); macroblock_motion_backward=%d\n", macroblock_motion_backward);
+							fprintf(stderr, "read_macroblock(); macroblock_pattern=%d\n", macroblock_pattern);
+							fprintf(stderr, "read_macroblock(); macroblock_intra=%d\n", macroblock_intra);
+							break;
 						default:
 							EXIT("MpegDecoder.read_macroblock(): error. // macroblock_type");
-																 break;
+							break;
 					}
 
 					if(macroblock_quant){
 						quantizer_scale = mpegFile.read_bits_as_num(5);
 						fprintf(stderr, "read_macroblock(): quantizer_scale=%d\n", quantizer_scale);
 					}
+				}
 
-					static Huffman *motion_code_huff = NULL;
-					if(!motion_code_huff){
-#include "motion_code_huff.h"
-					}
+				if(!skipped_macroblock){
 					if(macroblock_motion_forward){
-						motion_horizontal_forward_r = 0;
-						motion_vertical_forward_r = 0;
-						// horizontal
-						motion_horizontal_forward_code = huffman_decode(motion_code_huff);
-						motion_horizontal_forward_code = (int)((signed char)motion_horizontal_forward_code);
-						fprintf(stderr, "read_macroblocK(): motion_horizontal_forward_code=%d\n", motion_horizontal_forward_code);
-						int complement_horizontal_forward_r;
-						if((forward_f != 1) && (motion_horizontal_forward_code != 0)){
-							motion_horizontal_forward_r = mpegFile.read_bits_as_num(forward_r_size);
-							fprintf(stderr, "read_macroblock(): motion_horizontal_forward_r=%d\n", motion_horizontal_forward_r);
-							complement_horizontal_forward_r = forward_f - 1 - motion_horizontal_forward_r;
-						}
-						else{
-							complement_horizontal_forward_r = 0;
-						}
-						// vertical
-						motion_vertical_forward_code = huffman_decode(motion_code_huff);
-						motion_vertical_forward_code = (int)((signed char)motion_vertical_forward_code);
-						fprintf(stderr, "read_macroblock(): motion_vertical_forward_code=%d\n", motion_vertical_forward_code);
-						int complement_vertical_forward_r;
-						if((forward_f != 1) && (motion_vertical_forward_code != 0)){
-							motion_vertical_forward_r = mpegFile.read_bits_as_num(forward_r_size);
-							fprintf(stderr, "read_macroblock(): motion_vertical_forward_r=%d\n", motion_vertical_forward_r);
-							complement_vertical_forward_r = forward_f - 1 - motion_vertical_forward_r;
-						}
-						else{
-							complement_vertical_forward_r = 0;
-						}
-						// horizontal
-						int right_little, right_big;
-						right_little = motion_horizontal_forward_code*forward_f;
-						if(right_little == 0){
-							right_big = 0;
-						}
-						else if(right_little > 0){
-							right_little -= complement_horizontal_forward_r;
-							right_big = right_little - 32*forward_f;
-						}
-						else{
-							right_little += complement_horizontal_forward_r;
-							right_big = right_little + 32*forward_f;
-						}
-						if(right_little == 16*forward_f) EXIT("read_macroblock(): error. // right_little");
-						// vertical
-						int down_little, down_big;
-						down_little = motion_vertical_forward_code*forward_f;
-						if(down_little == 0){
-							down_big = 0;
-						}
-						else if(down_little > 0){
-							down_little -= complement_vertical_forward_r;
-							down_big = down_little - 32*forward_f;
-						}
-						else{
-							down_little += complement_vertical_forward_r;
-							down_big = down_little + 32*forward_f;
-						}
-						if(down_little == 16*forward_f) EXIT("read_macroblock(): error. // down_little");
-						// new_vector
-						int max = 16*forward_f - 1;
-						int min = -16*forward_f;
-						int new_vector;
-						// recon_right_for
-						new_vector = recon_right_for_prev + right_little;
-						recon_right_for = recon_right_for_prev + ((new_vector <= max && new_vector >= min)? right_little: right_big);
-						if(full_pel_forward_vector){
-							recon_right_for <<= 1;
-						}
-						// recon_down_for
-						new_vector = recon_down_for_prev + down_little;
-						recon_down_for = recon_down_for_prev + ((new_vector <= max && new_vector >= min)? down_little: down_big);
-						if(full_pel_forward_vector){
-							recon_down_for <<= 1;
-						}
-
-						fprintf(stderr, "read_macroblock(): forward motion vector=(%d,%d)\n", recon_right_for, recon_down_for);
+						fprintf(stderr, "read_macroblock(): recon_right_for...\n");
+						calc_motion_vec(forward_f, forward_r_size, full_pel_forward_vector, recon_right_for, recon_right_for_prev);
+						fprintf(stderr, "read_macroblock(): recon_down_for...\n");
+						calc_motion_vec(forward_f, forward_r_size, full_pel_forward_vector, recon_down_for, recon_down_for_prev);
 					}
 					else{
+						if(picture_coding_type != 3){
+							recon_right_for = 0;
+							recon_down_for = 0;
+						}
+						else{
+							recon_right_for = recon_right_for_prev;
+							recon_down_for = recon_down_for_prev;
+						}
+					}
+				}
+				else{
+					if(picture_coding_type == 2){
 						recon_right_for = 0;
 						recon_down_for = 0;
 					}
+					else if(picture_coding_type == 3){
+						recon_right_for = recon_right_for_prev;
+						recon_right_for = recon_right_for_prev;
+					}
+				}
+				if(macroblock_intra==0)fprintf(stderr, "read_macroblock(): forward motion vector=(%d,%d)\n", recon_right_for, recon_down_for);
+
+				if(!skipped_macroblock){
 					if(macroblock_motion_backward){
-						EXIT("read_macroblocK(): error. // macroblocK_motion_backward");
-						motion_horizontal_backward_code = huffman_decode(motion_code_huff);
-						motion_horizontal_backward_code = (int)((signed char)motion_horizontal_backward_code);
-						fprintf(stderr, "motion_horizontal_backward_code=%d\n", motion_horizontal_backward_code);
-						if((backward_f != 1) && (motion_horizontal_backward_code != 0)){
-							motion_horizontal_backward_r = mpegFile.read_bits_as_num(backward_r_size);
-							fprintf(stderr, "motion_horizontal_backward_r=%d\n", motion_horizontal_backward_r);
-							EXIT("MpegDecoder.read_macroblock(): error. // motion_horizontal_backward_r");
+						fprintf(stderr, "read_macroblock(): recon_right_back...\n");
+						calc_motion_vec(backward_f, backward_r_size, full_pel_backward_vector, recon_right_back, recon_right_back_prev);
+						fprintf(stderr, "read_macroblock(): recon_down_back...\n");
+						calc_motion_vec(backward_f, backward_r_size, full_pel_backward_vector, recon_down_back, recon_down_back_prev);
+					}
+					else{
+						if(picture_coding_type != 3){
+							recon_right_back = 0;
+							recon_down_back = 0;
 						}
-						motion_vertical_backward_code = huffman_decode(motion_code_huff);
-						motion_vertical_backward_code = (int)((signed char)motion_vertical_backward_code);
-						fprintf(stderr, "motion_vertical_backward_code=%d\n", motion_vertical_backward_code);
-						if((backward_f != 1) && (motion_vertical_backward_code != 0)){
-							motion_vertical_backward_r = mpegFile.read_bits_as_num(backward_r_size);
-							fprintf(stderr, "motion_vertical_backward_r=%d\n", motion_vertical_backward_r);
-							EXIT("MpegDecoder.read_macroblock(): error. // motion_vertical_backward_r");
+						else{
+							recon_right_back = recon_right_back_prev;
+							recon_down_back = recon_down_back_prev;
 						}
 					}
+				}
+				else{
+					if(picture_coding_type == 2){
+						recon_right_back = 0;
+						recon_down_back = 0;
+					}
+					else if(picture_coding_type == 3){
+						recon_right_back = recon_right_back_prev;
+						recon_right_back = recon_right_back_prev;
+					}
+				}
+				if(macroblock_intra==0)fprintf(stderr, "read_macroblock(): backward motion vector=(%d,%d)\n", recon_right_back, recon_down_back);
 
+				if(!skipped_macroblock){
 					for(int i = 0; i < 6; i++){
 						pattern_code[i] = 0;
 					}
 					if(macroblock_pattern){
 						static Huffman *coded_block_pattern_huff = NULL;
 						if(!coded_block_pattern_huff){
-#include "coded_block_pattern_huff.h"
+							#include "coded_block_pattern_huff.h"
 						}
 						coded_block_pattern = huffman_decode(coded_block_pattern_huff);
 						fprintf(stderr, "read_macroblock(): coded_block_pattern=%d\n", coded_block_pattern);
@@ -649,29 +699,117 @@ class MpegDecoder{
 							pattern_code[i] = 1;
 						}
 					}
+				}
 
-					if(!macroblock_intra){
-						dct_dc_y_past = 128*8;
-						dct_dc_cb_past = 128*8;
-						dct_dc_cr_past = 128*8;
-					}
+				if(skipped_macroblock || !macroblock_intra){
+					dct_dc_y_past = 128*8;
+					dct_dc_cb_past = 128*8;
+					dct_dc_cr_past = 128*8;
+				}
 
-					for(int i = 0; i < 6; i++){
+				for(int i = 0; i < 6; i++){
+					if(!skipped_macroblock){
 						read_block(i);
+						if(macroblock_intra){
+							intra_block_decode(i);
+						}
+						else{
+							if(picture_coding_type == 2){
+								ref_using_motion_vec(i, recon_right_for, recon_down_for, frame_past, false);
+								non_intra_block_decode(i);
+							}
+							if(picture_coding_type == 3){
+								if(macroblock_motion_forward && !macroblock_motion_backward){
+									ref_using_motion_vec(i, recon_right_for, recon_down_for, frame_past, false);
+								}
+								if(!macroblock_motion_forward && macroblock_motion_backward){
+									ref_using_motion_vec(i, recon_right_back, recon_down_back, frame_future, false);
+								}
+								if(macroblock_motion_forward && macroblock_motion_backward){
+									ref_using_motion_vec(i, recon_right_for, recon_down_for, frame_past, false);
+									ref_using_motion_vec(i, recon_right_back, recon_down_back, frame_future, true);
+								}
+								non_intra_block_decode(i);
+							}
+						}
 					}
-
-					// D-frame
-					if(picture_coding_type == 4){
-						int end_of_macroblock = mpegFile.read_bits_as_num(1);
-						if(end_of_macroblock != 1) EXIT("MpegDecoder.read_macroblock(): end_of_macroblock.");
+					else{
+						if(picture_coding_type == 2){
+							ref_using_motion_vec(i, recon_right_for, recon_down_for, frame_past, false);
+						}
+						else if(picture_coding_type == 3){
+							if(macroblock_motion_forward && !macroblock_motion_backward){
+								ref_using_motion_vec(i, recon_right_for, recon_down_for, frame_past, false);
+							}
+							if(!macroblock_motion_forward && macroblock_motion_backward){
+								ref_using_motion_vec(i, recon_right_back, recon_down_back, frame_future, false);
+							}
+							if(macroblock_motion_forward && macroblock_motion_backward){
+								ref_using_motion_vec(i, recon_right_for, recon_down_for, frame_past, false);
+								ref_using_motion_vec(i, recon_right_back, recon_down_back, frame_future, true);
+							}
+						}
 					}
 				}
+
+				// D-frame
+				if(picture_coding_type == 4){
+					int end_of_macroblock = mpegFile.read_bits_as_num(1);
+					if(end_of_macroblock != 1) EXIT("MpegDecoder.read_macroblock(): end_of_macroblock.");
+				}
+
 				previous_macroblock_address = macroblock_address;
 				if(macroblock_intra) past_intra_address = macroblock_address;
-				recon_right_for_prev = recon_right_for;
-				recon_down_for_prev = recon_down_for;
+				recon_right_for_prev = (picture_coding_type == 3 && macroblock_intra)? 0: recon_right_for;
+				recon_down_for_prev = (picture_coding_type == 3 && macroblock_intra)? 0: recon_down_for;
+				recon_right_back_prev = (picture_coding_type == 3 && macroblock_intra)? 0: recon_right_back;
+				recon_down_back_prev = (picture_coding_type == 3 && macroblock_intra)? 0: recon_down_back;
 			}
 
+			return;
+		}
+		void calc_motion_vec(int &f, int &r_size, int &full_pel_vector, int &recon_for, int &recon_for_prev){
+			static Huffman *motion_code_huff = NULL;
+			if(!motion_code_huff){
+				#include "motion_code_huff.h"
+			}
+			int motion_code;
+			motion_code = huffman_decode(motion_code_huff);
+			motion_code = (int)((signed char)motion_code);
+			fprintf(stderr, "calc_motion_vec(): motion_code=%d\n", motion_code);
+			int complement_r;
+			if((f != 1) && (motion_code != 0)){
+				int motion_r = mpegFile.read_bits_as_num(r_size);
+				fprintf(stderr, "calc_motion_vec(): motion_r=%d\n", motion_r);
+				complement_r = f - 1 - motion_r;
+			}
+			else{
+				complement_r = 0;
+			}
+
+			int little, big;
+			little = motion_code*f;
+			if(little == 0){
+				big = 0;
+			}
+			else if(little > 0){
+				little -= complement_r;
+				big = little - 32*f;
+			}
+			else{
+				little += complement_r;
+				big = little + 32*f;
+			}
+			if(little == 16*f) EXIT("read_macroblock(): error. // little");
+			
+			int max = 16*f - 1;
+			int min = -16*f;
+			int new_vector;
+			new_vector = recon_for_prev + little;
+			recon_for = recon_for_prev + ((new_vector <= max && new_vector >= min)? little: big);
+			if(full_pel_vector){
+				recon_for <<= 1;
+			}
 			return;
 		}
 	private:
@@ -778,75 +916,8 @@ class MpegDecoder{
 			}
 			return 0;
 		}
-		void print_block(int *block, bool isZz){
-			for(int i = 0; i < 8; i++){
-				fprintf(stderr, "MpegDecoder.print_block(): ");
-				for(int j = 0; j < 8; j++){
-					int k = isZz? scan[i][j]: 8*i + j;
-					fprintf(stderr, "%4d ",  *(block + k));
-				}
-				fprintf(stderr, "\n");
-			}
-			fprintf(stderr, "\n");
-			return;
-		}
-		void idct_block(){
-			double tmp[8][8];
-			int r, c;
-			for(r = 0; r < 8; r++) for(c = 0; c < 8; c++){
-				tmp[r][c] = (double)dct_recon[r][c];
-			}
-
-			double F[8], f[8];
-			for(r = 0; r < 8; r++){
-				for(c = 0; c < 8; c++) F[c] = tmp[r][c];
-				idct_1d(F, f);
-				for(c = 0; c < 8; c++) tmp[r][c] = f[c];
-			}
-			for(c = 0; c < 8; c++){
-				for(r = 0; r < 8; r++) F[r] = tmp[r][c];
-				idct_1d(F, f);
-				for(r = 0; r < 8; r++) tmp[r][c] = f[r];
-			}
-			for(r = 0; r < 8; r++) for(c = 0; c < 8; c++){
-				dct_recon[r][c] = round(tmp[r][c]);
-			}
-			return;
-		}
-		void idct_1d(double F[8], double f[8]){
-			double c[8];
-			int i;
-			for(i = 0; i < 8; i++) c[i] = cos((double)i*M_PI/16.0);
-
-			double t[6];
-			t[0] = F[0]*c[4];
-			t[1] = F[2]*c[2];
-			t[2] = F[2]*c[6];
-			t[3] = F[4]*c[4];
-			t[4] = F[6]*c[6];
-			t[5] = F[6]*c[2];
-
-			double a[4];
-			a[0] = t[0] + t[1] + t[3] + t[4];
-			a[1] = t[0] + t[2] - t[3] - t[5];
-			a[2] = t[0] - t[2] - t[3] + t[5];
-			a[3] = t[0] - t[1] + t[3] - t[4];
-
-			double b[4];
-			b[0] = F[1]*c[1] + F[3]*c[3] + F[5]*c[5] + F[7]*c[7];
-			b[1] = F[1]*c[3] - F[3]*c[7] - F[5]*c[1] - F[7]*c[5];
-			b[2] = F[1]*c[5] - F[3]*c[1] + F[5]*c[7] + F[7]*c[3];
-			b[3] = F[1]*c[7] - F[3]*c[5] + F[5]*c[3] - F[7]*c[1];
-
-			f[0] = (a[0] + b[0])/2.0;
-			f[7] = (a[0] - b[0])/2.0;
-			f[1] = (a[1] + b[1])/2.0;
-			f[6] = (a[1] - b[1])/2.0;
-			f[2] = (a[2] + b[2])/2.0;
-			f[5] = (a[2] - b[2])/2.0;
-			f[3] = (a[3] + b[3])/2.0;
-			f[4] = (a[3] - b[3])/2.0;
-			return;
+		int sign(int num){
+			return (num == 0)? 0: (num > 0)? 1: -1;
 		}
 		int dct_dc_size_luminance;
 		int dct_dc_size_chrominance;
@@ -860,7 +931,6 @@ class MpegDecoder{
 		int dct_dc_y_past;
 		int dct_dc_cb_past;
 		int dct_dc_cr_past;
-		int **dct_recon;
 	public:
 		void read_block(int i){
 			dct_zz_i = 0;
@@ -995,21 +1065,86 @@ class MpegDecoder{
 				if(dct_zz_i > 64) EXIT("MpegDecoder.read_block(): error // block_i");
 			}
 
-			// decoding...
-			if(macroblock_intra){
-				intra_block_decode(i);
+			return;
+		}
+	private:
+		void print_block(int *block, bool isZz){
+			for(int i = 0; i < 8; i++){
+				fprintf(stderr, "MpegDecoder.print_block(): ");
+				for(int j = 0; j < 8; j++){
+					int k = isZz? scan[i][j]: 8*i + j;
+					fprintf(stderr, "%4d ",  *(block + k));
+				}
+				fprintf(stderr, "\n");
 			}
-			else{
-				ref_using_motion_vec(i);
-				non_intra_block_decode(i);
+			fprintf(stderr, "\n");
+			return;
+		}
+		void idct_block(){
+			double tmp[8][8];
+			int r, c;
+			for(r = 0; r < 8; r++) for(c = 0; c < 8; c++){
+				tmp[r][c] = (double)dct_recon[r][c];
+			}
+
+			double F[8], f[8];
+			for(r = 0; r < 8; r++){
+				for(c = 0; c < 8; c++) F[c] = tmp[r][c];
+				idct_1d(F, f);
+				for(c = 0; c < 8; c++) tmp[r][c] = f[c];
+			}
+			for(c = 0; c < 8; c++){
+				for(r = 0; r < 8; r++) F[r] = tmp[r][c];
+				idct_1d(F, f);
+				for(r = 0; r < 8; r++) tmp[r][c] = f[r];
+			}
+			for(r = 0; r < 8; r++) for(c = 0; c < 8; c++){
+				dct_recon[r][c] = round(tmp[r][c]);
 			}
 			return;
 		}
+		void idct_1d(double F[8], double f[8]){
+			double c[8];
+			int i;
+			for(i = 0; i < 8; i++) c[i] = cos((double)i*M_PI/16.0);
+
+			double t[6];
+			t[0] = F[0]*c[4];
+			t[1] = F[2]*c[2];
+			t[2] = F[2]*c[6];
+			t[3] = F[4]*c[4];
+			t[4] = F[6]*c[6];
+			t[5] = F[6]*c[2];
+
+			double a[4];
+			a[0] = t[0] + t[1] + t[3] + t[4];
+			a[1] = t[0] + t[2] - t[3] - t[5];
+			a[2] = t[0] - t[2] - t[3] + t[5];
+			a[3] = t[0] - t[1] + t[3] - t[4];
+
+			double b[4];
+			b[0] = F[1]*c[1] + F[3]*c[3] + F[5]*c[5] + F[7]*c[7];
+			b[1] = F[1]*c[3] - F[3]*c[7] - F[5]*c[1] - F[7]*c[5];
+			b[2] = F[1]*c[5] - F[3]*c[1] + F[5]*c[7] + F[7]*c[3];
+			b[3] = F[1]*c[7] - F[3]*c[5] + F[5]*c[3] - F[7]*c[1];
+
+			f[0] = (a[0] + b[0])/2.0;
+			f[7] = (a[0] - b[0])/2.0;
+			f[1] = (a[1] + b[1])/2.0;
+			f[6] = (a[1] - b[1])/2.0;
+			f[2] = (a[2] + b[2])/2.0;
+			f[5] = (a[2] - b[2])/2.0;
+			f[3] = (a[3] + b[3])/2.0;
+			f[4] = (a[3] - b[3])/2.0;
+			return;
+		}
+		int **dct_recon;
+	public:
 		void intra_block_decode(int i){
 			for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
 				dct_recon[m][n] = 2*dct_zz[scan[m][n]]*quantizer_scale*intra_quantizer_matrix[m][n]/16;
 				if((dct_recon[m][n] & 1) == 0){
-					dct_recon[m][n] -= (dct_recon[m][n] == 0)? 0: (dct_recon[m][n] > 0)? 1: -1;
+					dct_recon[m][n] -= sign(dct_recon[m][n]);
 				}
 				if(dct_recon[m][n] > 2047){
 					dct_recon[m][n] = 2047;
@@ -1020,21 +1155,29 @@ class MpegDecoder{
 			}
 
 			switch(i){
-				case 0: case 1: case 2: case 3:
-					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_y_past;
+				case 0:
+					dct_recon[0][0] = dct_zz[0]*8;
+					dct_recon[0][0] += (macroblock_address - past_intra_address > 1)? 128*8: dct_dc_y_past;
+					dct_dc_y_past = dct_recon[0][0];
+					break;
+				case 1: case 2: case 3:
+					dct_recon[0][0] = dct_zz[0]*8;
+					dct_recon[0][0] += dct_dc_y_past;
 					dct_dc_y_past = dct_recon[0][0];
 					break;
 				case 4:
-					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cb_past;
+					dct_recon[0][0] = dct_zz[0]*8;
+					dct_recon[0][0] += (macroblock_address - past_intra_address > 1)? 128*8: dct_dc_cb_past;
 					dct_dc_cb_past = dct_recon[0][0];
 					break;
 				case 5:
-					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cr_past;
+					dct_recon[0][0] = dct_zz[0]*8;
+					dct_recon[0][0] += (macroblock_address - past_intra_address > 1)? 128*8: dct_dc_cr_past;
 					dct_dc_cr_past = dct_recon[0][0];
 					break;
 				default:
 					EXIT("MpegDecoder.read_block(): error. // dct_recon[0][0]");
-													break;
+					break;
 			}
 
 			// idct
@@ -1073,40 +1216,40 @@ class MpegDecoder{
 			}
 			return;
 		}
-		void ref_using_motion_vec(int i){
-			int right_for, down_for;
-			int right_half_for, down_half_for;
+		void ref_using_motion_vec(int i, int &recon_right, int &recon_down, Pixel **&frame_ref, bool isAvg){
+			int right, down;
+			int right_half, down_half;
 			switch(i){
 				case 0: case 1: case 2: case 3:
-					right_for = recon_right_for >> 1;
-					down_for = recon_down_for >> 1;
-					right_half_for = recon_right_for - 2*right_for;
-					down_half_for = recon_down_for - 2*down_for;
+					right = recon_right >> 1;
+					right_half = recon_right - 2*right;
+					down = recon_down >> 1;
+					down_half = recon_down - 2*down;
 					for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
 						int y = mb_row*16 + (int)(i/2)*8 + m;
 						int x = mb_column*16 + (i%2)*8 + n;
 						if(y >= vertical_size || x >= horizontal_size) continue;
-						frame[y][x] = frame_past[y + down_for][x + right_for];
-						if(right_half_for) frame[y][x] += frame_past[y + down_for][x + right_for + 1];
-						if(down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for];
-						if(right_half_for && down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for + 1];
-						frame[y][x] /= (right_half_for? 2: 1)*(down_half_for? 2: 1);
+						frame[y][x] = isAvg? (frame[y][x] + frame_ref[y + down][x + right])/2: frame_ref[y + down][x + right];
+						if(right_half == 1) frame[y][x] += frame_ref[y + down][x + right + 1];
+						if(down_half == 1) frame[y][x] += frame_ref[y + down + 1][x + right];
+						if(right_half == 1 && down_half == 1) frame[y][x] += frame_ref[y + down + 1][x + right + 1];
+						frame[y][x] /= (right_half == 1? 2: 1)*(down_half == 1? 2: 1);
 					}
 					break;
 				case 4: case 5:
-					right_for = (recon_right_for/2) >> 1;
-					down_for = (recon_down_for/2) >> 1;
-					right_half_for = recon_right_for/2 - 2*right_for;
-					down_half_for = recon_down_for/2 - 2*down_for;
+					right = (recon_right/2) >> 1;
+					right_half = recon_right/2 - 2*right;
+					down = (recon_down/2) >> 1;
+					down_half = recon_down/2 - 2*down;
 					for(int m = 0; m < 16; m++) for(int n = 0; n < 16; n++){
 						int y = mb_row*16 + m;
 						int x = mb_column*16 + n;
 						if(y >= vertical_size || x >= horizontal_size) continue;
-						frame[y][x] = frame_past[y + down_for][x + right_for];
-						if(right_half_for) frame[y][x] += frame_past[y + down_for][x + right_for + 1];
-						if(down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for];
-						if(right_half_for && down_half_for) frame[y][x] += frame_past[y + down_for + 1][x + right_for + 1];
-						frame[y][x] /= (right_half_for? 2: 1)*(down_half_for? 2: 1);
+						frame[y][x] = frame_ref[y + down][x + right];
+						if(right_half == 1) frame[y][x] += frame_ref[y + down][x + right + 1];
+						if(down_half == 1) frame[y][x] += frame_ref[y + down + 1][x + right];
+						if(right_half == 1 && down_half == 1) frame[y][x] += frame_ref[y + down + 1][x + right + 1];
+						frame[y][x] /= (right_half == 1? 2: 1)*(down_half == 1? 2: 1);
 					}
 					break;
 				default:
@@ -1117,34 +1260,26 @@ class MpegDecoder{
 		}
 		void non_intra_block_decode(int i){
 			for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
-				dct_recon[m][n] = 2*dct_zz[scan[m][n]]*quantizer_scale*intra_quantizer_matrix[m][n]/16;
-				if((dct_recon[m][n] & 1) == 0){
-					dct_recon[m][n] -= (dct_recon[m][n] == 0)? 0: (dct_recon[m][n] > 0)? 1: -1;
+				if(!pattern_code[i]){
+					dct_recon[m][n] = 0;
+					continue;
 				}
-				if(dct_recon[m][n] > 2047){
-					dct_recon[m][n] = 2047;
-				}
-				if(dct_recon[m][n] < -2048){
-					dct_recon[m][n] = -2048;
-				}
-			}
 
-			switch(i){
-				case 0: case 1: case 2: case 3:
-					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_y_past;
-					dct_dc_y_past = dct_recon[0][0];
-					break;
-				case 4:
-					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cb_past;
-					dct_dc_cb_past = dct_recon[0][0];
-					break;
-				case 5:
-					dct_recon[0][0] = dct_zz[0]*8 + dct_dc_cr_past;
-					dct_dc_cr_past = dct_recon[0][0];
-					break;
-				default:
-					EXIT("MpegDecoder.read_block(): error. // dct_recon[0][0]");
-													break;
+				if(dct_zz[scan[m][n]] == 0){
+					dct_recon[m][n] = 0;
+				}
+				else{
+					dct_recon[m][n] = (2*dct_zz[scan[m][n]] + sign(dct_zz[scan[m][n]]))*quantizer_scale*non_intra_quantizer_matrix[m][n]/16;
+					if((dct_recon[m][n] & 1) == 0){
+						dct_recon[m][n] -= sign(dct_recon[m][n]);
+					}
+					if(dct_recon[m][n] > 2047){
+						dct_recon[m][n] = 2047;
+					}
+					if(dct_recon[m][n] < -2048){
+						dct_recon[m][n] = -2048;
+					}
+				}
 			}
 
 			// idct
@@ -1153,11 +1288,11 @@ class MpegDecoder{
 			// clipping
 			for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
 				if(dct_recon[m][n] > 255) dct_recon[m][n] = 255;
-				if(dct_recon[m][n] < 0) dct_recon[m][n] = 0;
+				if(dct_recon[m][n] < -256) dct_recon[m][n] = -256;
 			}
 			//print_block(&dct_recon[0][0], false);
 
-			// posit block in frame
+			// add to block in frame
 			for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
 				int x, y;
 				switch(i){
@@ -1165,15 +1300,25 @@ class MpegDecoder{
 						y = mb_row*16 + (int)(i/2)*8 + m; //mb_height?????
 						x = mb_column*16 + (i%2)*8 + n; //mb_width?????
 						if(y >= vertical_size || x >= horizontal_size) continue;
-						frame[y][x].y = dct_recon[m][n];
+						frame[y][x].y += dct_recon[m][n];
+						if(frame[y][x].y > 255) frame[y][x].y = 255;
+						if(frame[y][x].y < 0) frame[y][x].y = 0;
 						break;
 					case 4: case 5:
 						for(int k = 0; k < 4; k++){
 							y = mb_row*16 + 2*m + k/2;
 							x = mb_column*16 + 2*n + k%2;
 							if(y >= vertical_size || x >= horizontal_size) continue;
-							if(i == 4) frame[y][x].cb = dct_recon[m][n];
-							if(i == 5) frame[y][x].cr = dct_recon[m][n];
+							if(i == 4){
+								frame[y][x].cb += dct_recon[m][n];
+								if(frame[y][x].cb > 255) frame[y][x].cb = 255;
+								if(frame[y][x].cb < 0) frame[y][x].cb = 0;
+							}
+							if(i == 5){
+								frame[y][x].cr += dct_recon[m][n];
+								if(frame[y][x].cr > 255) frame[y][x].cr = 255;
+								if(frame[y][x].cr < 0) frame[y][x].cr = 0;
+							}
 						}
 						break;
 					default:
@@ -1245,10 +1390,9 @@ class MpegDecoder{
 						break;
 					default:
 						if(SLICE_START_CODE(ret)){
-							fprintf(stderr, "slice_start_code... i=%d\n\n", frame_i);
+							fprintf(stderr, "slice_start_code... i=%d\n\n", temporal_reference);
 							read_slice_start();
-							fprintf(stderr, "slice_start_code done. i=%d\n\n", frame_i);
-							frame_i++;
+							fprintf(stderr, "slice_start_code done. i=%d\n\n", temporal_reference);
 							break;
 						}
 						EXIT("MpegDecoder.read(): error.");
