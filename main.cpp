@@ -1,4 +1,3 @@
-int frame_i;
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
@@ -119,6 +118,7 @@ class MpegDecoder{
 			dct_zz = new int[64];
 			dct_recon = new int*[8];
 			for(int j = 0; j < 8; j++) dct_recon[j] = new int[8];
+			temporal_reference_accu = 0;
 
 			pel_aspect_ratio = mpegFile.read_bits_as_num(4);
 			// UNDONE
@@ -233,9 +233,12 @@ class MpegDecoder{
 				EXIT("mpeg.read() error //user_data_start_code");
 			}
 
+			int numPictures = 0;
 			while(nextbits(4*8) == PICTURE_START_CODE){
 				read_picture_start();
+				numPictures++;
 			}
+			temporal_reference_accu += numPictures;
 
 			fprintf(stderr, "read_sequence_start()... done.\n");
 			return;
@@ -243,6 +246,7 @@ class MpegDecoder{
 	private:
 		int picture_start_code;
 		int temporal_reference;
+		int temporal_reference_accu;
 		int picture_coding_type;
 		int vbv_delay;
 		int full_pel_forward_vector;
@@ -265,12 +269,7 @@ class MpegDecoder{
 			}
 
 			for(int i = 0; i < vertical_size; i++) for(int j = 0; j < horizontal_size; j++){
-				frame[i][j].y = 0;
-				frame[i][j].cb = 0;
-				frame[i][j].cr = 0;
-				frame[i][j].r = 0;
-				frame[i][j].g = 0;
-				frame[i][j].b = 0;
+				frame[i][j].reset();
 			}
 
 			temporal_reference = mpegFile.read_bits_as_num(10);
@@ -337,7 +336,7 @@ class MpegDecoder{
 
 			// generate bmp file.
 			char bmppath[1024];
-			sprintf(bmppath, "%s/%d.bmp", dir_name, frame_i++);
+			sprintf(bmppath, "%s/%d.bmp", dir_name, temporal_reference_accu + temporal_reference);
 			bmpMaker.make(bmppath, &r[0][0], &g[0][0], &b[0][0], horizontal_size, vertical_size);
 
 			// buffer for non intra frame
@@ -1414,50 +1413,6 @@ class MpegDecoder{
 			else{
 				EXIT("read(): error. //sequence_end_code");
 			}
-			/*
-					do{
-				int 
-			int ret;
-			while((ret = nextbits(4*8)) != -1){
-				switch(ret){
-					case SEQUENCE_HEADER_CODE:
-						fprintf(stderr, "sequence_header_code...\n\n");
-						read_sequence_header();
-						fprintf(stderr, "sequence_header_code done.\n\n");
-						break;
-					case EXTENSION_START_CODE:
-						fprintf(stderr, "%d\n", ret);
-						EXIT("mpeg.read() error //extension_start_code");
-						break;
-					case USER_DATA_START_CODE:
-						EXIT("mpeg.read() error //user_data_start_code");
-						break;
-					case GROUP_START_CODE:
-						fprintf(stderr, "group_start_code...\n\n");
-						read_group_start();
-						fprintf(stderr, "group_start_code done.\n\n");
-						break;
-					case PICTURE_START_CODE:
-						fprintf(stderr, "picture_start_code...\n\n");
-						read_picture_start();
-						fprintf(stderr, "picture_start_code done.\n\n");
-						break;
-					case SEQUENCE_END_CODE:
-						break;
-					default:
-						if(SLICE_START_CODE(ret)){
-							fprintf(stderr, "slice_start_code... i=%d\n\n", frame_i);
-							read_slice_start();
-							fprintf(stderr, "slice_start_code done. i=%d\n\n", frame_i);
-							frame_i++;
-							break;
-						}
-						EXIT("MpegDecoder.read(): error.");
-						break;
-				}
-}
-			fprintf(stderr, "DONE.\n");
-			*/
 			return;
 		}
 };
