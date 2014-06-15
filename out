@@ -1,3 +1,26 @@
-g++ -g -o main main.cpp
-make run
-./main ../MPEG/IP_ONLY.M1V
+main.cpp:1240:40: error: invalid operands to binary expression ('int' and 'MpegDecoder::Pixel')
+                                                if(right_half == 1) pel[y][x].cb += pel_ref[y + down][x + right + 1];
+                                                                    ~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main.cpp:60:19: note: candidate function not viable: no known conversion from 'int' to 'MpegDecoder::Pixel &' for 1st argument
+                                friend Pixel &operator+=(Pixel &p1, const Pixel &p2){
+                                              ^
+main.cpp:1241:39: error: invalid operands to binary expression ('int' and 'MpegDecoder::Pixel')
+                                                if(down_half == 1) pel[y][x].cb += pel_ref[y + down + 1][x + right];
+                                                                   ~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main.cpp:60:19: note: candidate function not viable: no known conversion from 'int' to 'MpegDecoder::Pixel &' for 1st argument
+                                friend Pixel &operator+=(Pixel &p1, const Pixel &p2){
+                                              ^
+main.cpp:1256:40: error: invalid operands to binary expression ('int' and 'MpegDecoder::Pixel')
+                                                if(right_half == 1) pel[y][x].cr += pel_ref[y + down][x + right + 1];
+                                                                    ~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main.cpp:60:19: note: candidate function not viable: no known conversion from 'int' to 'MpegDecoder::Pixel &' for 1st argument
+                                friend Pixel &operator+=(Pixel &p1, const Pixel &p2){
+                                              ^
+main.cpp:1257:39: error: invalid operands to binary expression ('int' and 'MpegDecoder::Pixel')
+                                                if(down_half == 1) pel[y][x].cr += pel_ref[y + down + 1][x + right];
+                                                                   ~~~~~~~~~~~~ ^  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+main.cpp:60:19: note: candidate function not viable: no known conversion from 'int' to 'MpegDecoder::Pixel &' for 1st argument
+                                friend Pixel &operator+=(Pixel &p1, const Pixel &p2){
+                                              ^
+4 errors generated.
+make: *** [all] Error 1
