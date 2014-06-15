@@ -274,6 +274,8 @@ class MpegDecoder{
 
 			temporal_reference = mpegFile.read_bits_as_num(10);
 			fprintf(stderr, "read_picture_start(): temporal_reference=%d\n", temporal_reference);
+			int temporal_order = temporal_reference_accu + temporal_reference;
+			fprintf(stderr, "read_picture_start(): picture %d\n", temporal_order);
 
 			picture_coding_type = mpegFile.read_bits_as_num(3);
 			fprintf(stderr, "read_picture_start(): picture_coding_type=%d\n", picture_coding_type);
@@ -297,6 +299,13 @@ class MpegDecoder{
 				fprintf(stderr, "read_picture_start(): backward_f_code=%d\n", backward_f_code);
 				backward_r_size = backward_f_code - 1;
 				backward_f = 1 << backward_r_size;
+			}
+
+			// no need future frame for non B-frame
+			if(picture_coding_type != 3){
+				for(int i = 0; i < vertical_size; i++){
+					memcpy(frame_past[i], frame_future[i], sizeof(Pixel)*horizontal_size);
+				}
 			}
 
 			while(nextbits(1) == 1){ // b1
@@ -336,7 +345,7 @@ class MpegDecoder{
 
 			// generate bmp file.
 			char bmppath[1024];
-			sprintf(bmppath, "%s/%d.bmp", dir_name, temporal_reference_accu + temporal_reference);
+			sprintf(bmppath, "%s/%d.bmp", dir_name, temporal_order);
 			bmpMaker.make(bmppath, &r[0][0], &g[0][0], &b[0][0], horizontal_size, vertical_size);
 
 			// buffer for non intra frame
@@ -369,6 +378,7 @@ class MpegDecoder{
 
 			quantizer_scale = mpegFile.read_bits_as_num(5);
 			fprintf(stderr, "read_slice_start(): quantizer_scale=%d\n", quantizer_scale);
+
 			// initailize
 			previous_macroblock_address = (slice_vertical_position - 1)*mb_width - 1;
 			past_intra_address = -2;
@@ -388,12 +398,6 @@ class MpegDecoder{
 			}
 			extra_bit_slice = mpegFile.read_bits_as_num(1);
 			fprintf(stderr, "read_slice_start(): extra_bit_slice=%d\n", extra_bit_slice);
-
-			if(picture_coding_type != 3){
-				for(int i = 0; i < vertical_size; i++){
-					memcpy(frame_past[i], frame_future[i], sizeof(Pixel)*horizontal_size);
-				}
-			}
 
 			while(nextbits(23) != 0){ // b00000000000000000000000
 				read_macroblock();
@@ -437,37 +441,37 @@ class MpegDecoder{
 		void read_macroblock(){
 			fprintf(stderr, "read_macroblock()...\n");
 
+			// macroblock_address_increment
+			int macroblock_address_increment_accu = 0;
 			while(true){
-				static Huffman *macroblock_address_increment_huff = NULL;
-				if(!macroblock_address_increment_huff){
-					#include "macroblock_address_increment_huff.h"
-				}
+				#include "macroblock_address_increment_huff.h"
 				macroblock_address_increment = huffman_decode(macroblock_address_increment_huff);
 				fprintf(stderr, "read_macroblock(): macroblock_address_increment=%d\n", macroblock_address_increment);
 				if(macroblock_address_increment == 0x00){
 					continue;
 				}
-				if(macroblock_address_increment == 0xFF){
-					macroblock_address += 33;
+				else if(macroblock_address_increment == 0xFF){
+					macroblock_address_increment_accu += 33;
 					continue;
 				}
-				break;
+				else{
+					macroblock_address_increment_accu += macroblock_address_increment;
+					break;
+				}
 			}
 
-			for(int j = 0; j < macroblock_address_increment; j++){
+			for(int j = 0; j < macroblock_address_increment_accu; j++){
 				macroblock_address = previous_macroblock_address + 1;
 				fprintf(stderr, "read_macroblock(): macroblock_address=%d\n", macroblock_address);
 				mb_row = macroblock_address/mb_width;
 				mb_column = macroblock_address%mb_width;
-				bool skipped_macroblock = j < macroblock_address_increment - 1;
+
+				bool skipped_macroblock = j < macroblock_address_increment_accu - 1;
 				// process macroblock
 				if(!skipped_macroblock){
 					switch(picture_coding_type){
 						case 1: // intra-coded (I)
-							static Huffman *macroblock_type_I_huff = NULL;
-							if(!macroblock_type_I_huff){
-								#include "macroblock_type_I_huff.h"
-							}
+							#include "macroblock_type_I_huff.h"
 							macroblock_type = huffman_decode(macroblock_type_I_huff);
 							switch(macroblock_type){
 								case 1: // 1
@@ -489,10 +493,7 @@ class MpegDecoder{
 							}
 							break;
 						case 2: // predictive-coded (P)
-							static Huffman *macroblock_type_P_huff = NULL;
-							if(!macroblock_type_P_huff){
-								#include "macroblock_type_P_huff.h"
-							}
+							#include "macroblock_type_P_huff.h"
 							macroblock_type = huffman_decode(macroblock_type_P_huff);
 							fprintf(stderr, "read_macroblock(): macroblock_type=");macroblock_type_P_huff->print_codeword(macroblock_type);fprintf(stderr, "\n");
 							switch(macroblock_type){
@@ -553,10 +554,7 @@ class MpegDecoder{
 							fprintf(stderr, "read_macroblock(); macroblock_intra=%d\n", macroblock_intra);
 							break;
 						case 3: // bidirectionally predictive-coded (B)
-							static Huffman *macroblock_type_B_huff = NULL;
-							if(!macroblock_type_B_huff){
-								#include "macroblock_type_B_huff.h"
-							}
+							#include "macroblock_type_B_huff.h"
 							macroblock_type = huffman_decode(macroblock_type_B_huff);
 							fprintf(stderr, "read_macroblock(): macroblock_type=");macroblock_type_B_huff->print_codeword(macroblock_type);fprintf(stderr, "\n");
 							switch(macroblock_type){
@@ -720,10 +718,7 @@ class MpegDecoder{
 						pattern_code[i] = 0;
 					}
 					if(macroblock_pattern){
-						static Huffman *coded_block_pattern_huff = NULL;
-						if(!coded_block_pattern_huff){
-							#include "coded_block_pattern_huff.h"
-						}
+						#include "coded_block_pattern_huff.h"
 						coded_block_pattern = huffman_decode(coded_block_pattern_huff);
 						fprintf(stderr, "read_macroblock(): coded_block_pattern=%d\n", coded_block_pattern);
 						int cbp = coded_block_pattern;
@@ -809,10 +804,7 @@ class MpegDecoder{
 			return;
 		}
 		void calc_motion_vec(int &f, int &r_size, int &full_pel_vector, int &recon_for, int &recon_for_prev){
-			static Huffman *motion_code_huff = NULL;
-			if(!motion_code_huff){
-				#include "motion_code_huff.h"
-			}
+			#include "motion_code_huff.h"
 			int motion_code;
 			motion_code = huffman_decode(motion_code_huff);
 			motion_code = (int)((signed char)motion_code);
@@ -983,10 +975,7 @@ class MpegDecoder{
 					switch(i){
 						case 0: case 1: case 2: case 3:
 							// for block 0..3 (Y)
-							static Huffman *dct_dc_size_luminance_huff = NULL;
-							if(!dct_dc_size_luminance_huff){
-#include "dct_dc_size_luminance_huff.h"
-							}
+							#include "dct_dc_size_luminance_huff.h"
 							dct_dc_size_luminance = huffman_decode(dct_dc_size_luminance_huff);
 							fprintf(stderr, "read_block(): dct_dc_size_luminance=%d\n", dct_dc_size_luminance);
 							if(dct_dc_size_luminance > 0){
@@ -1001,10 +990,7 @@ class MpegDecoder{
 							break;
 						case 4: case 5:
 							// for block 4..5 (CbCr)
-							static Huffman *dct_dc_size_chrominance_huff = NULL;
-							if(!dct_dc_size_chrominance_huff){
-#include "dct_dc_size_chrominance_huff.h"
-							}
+							#include "dct_dc_size_chrominance_huff.h"
 							dct_dc_size_chrominance = huffman_decode(dct_dc_size_chrominance_huff);
 							fprintf(stderr, "read_block(): dct_dc_size_chrominance=%d\n", dct_dc_size_chrominance);
 							if(dct_dc_size_chrominance > 0){
@@ -1023,10 +1009,7 @@ class MpegDecoder{
 				}
 				else{
 					// dct_coeff_first for non intra block
-					static Huffman *dct_coeff_first_huff = NULL;
-					if(!dct_coeff_first_huff){
-						#include "dct_coeff_first_huff.h"
-					}
+					#include "dct_coeff_first_huff.h"
 					int run, level;
 					dct_coeff_first = huffman_decode(dct_coeff_first_huff);
 					dct_coeff_symbol(0, 0, (unsigned char)dct_coeff_first, &run, &level);
@@ -1057,11 +1040,7 @@ class MpegDecoder{
 				// dct_coeff_next
 				if(picture_coding_type != 4){
 					// non-dc-intra-coded (non D)
-					static Huffman *dct_coeff_next_huff = NULL;
-					if(!dct_coeff_next_huff){
-						#include "dct_coeff_next_huff.h"
-					}
-
+					#include "dct_coeff_next_huff.h"
 					int run, level;
 					while(1){
 						// TODO:huffman_decode->too slow
