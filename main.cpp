@@ -773,10 +773,10 @@ class MpegDecoder{
 
 				previous_macroblock_address = macroblock_address;
 				if(macroblock_intra) past_intra_address = macroblock_address;
-				recon_right_for_prev = (picture_coding_type == 3 && macroblock_intra)? 0: recon_right_for;
-				recon_down_for_prev = (picture_coding_type == 3 && macroblock_intra)? 0: recon_down_for;
-				recon_right_back_prev = (picture_coding_type == 3 && macroblock_intra)? 0: recon_right_back;
-				recon_down_back_prev = (picture_coding_type == 3 && macroblock_intra)? 0: recon_down_back;
+				recon_right_for_prev = (skipped_macroblock || macroblock_intra)? 0: recon_right_for;
+				recon_down_for_prev = macroblock_intra? 0: recon_down_for;
+				recon_right_back_prev = macroblock_intra? 0: recon_right_back;
+				recon_down_back_prev = macroblock_intra? 0: recon_down_back;
 			}
 
 			fprintf(stderr, "read_macroblock()... done.\n");
@@ -1208,57 +1208,68 @@ class MpegDecoder{
 			return;
 		}
 		void ref_by_motion_vector(int i, int &recon_right, int &recon_down, Pixel **&pel_ref, bool isAvg){
-			fprintf(stderr, "ref_by_motion_vector(): i=%d, recon_right=%d, recon_down=%d, isAvg=%d\n", i, recon_right, recon_down, isAvg);
+//			fprintf(stderr, "ref_by_motion_vector(): i=%d, recon_right=%d, recon_down=%d, isAvg=%d\n", i, recon_right, recon_down, isAvg);
 			int right, down;
 			int right_half, down_half;
+			int y, x;
+			int tmp;
 			switch(i){
 				case 0: case 1: case 2: case 3:
 					right = recon_right >> 1;
 					right_half = recon_right&1;
 					down = recon_down >> 1;
 					down_half = recon_down&1;
+					break;
+				case 4: case 5:
+					right = (recon_right/2) >> 1;
+					right_half = (recon_right/2)&1;
+					down = (recon_down/2) >> 1;
+					down_half = (recon_down/2)&1;
+					break;
+			}
+			switch(i){
+				case 0: case 1: case 2: case 3:
 					for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
-						int y = mb_row*16 + (int)(i/2)*8 + m;
-						int x = mb_column*16 + (i%2)*8 + n;
+						y = mb_row*16 + (int)(i/2)*8 + m;
+						x = mb_column*16 + (i%2)*8 + n;
 						if(y >= vertical_size || x >= horizontal_size) continue;
-						//pel[y][x] = isAvg? (pel[y][x] + pel_ref[y + down][x + right])/2: pel_ref[y + down][x + right];
-						pel[y][x].y = pel_ref[y + down][x + right].y;
-						if(right_half) pel[y][x].y += pel_ref[y + down][x + right + 1].y;
-						if(down_half) pel[y][x].y += pel_ref[y + down + 1][x + right].y;
-						if(right_half && down_half) pel[y][x].y += pel_ref[y + down + 1][x + right + 1].y;
-						pel[y][x].y /= (right_half? 2: 1)*(down_half? 2: 1);
+						tmp = pel_ref[y + down][x + right].y;
+						if(right_half) tmp += pel_ref[y + down][x + right + 1].y;
+						if(down_half) tmp += pel_ref[y + down + 1][x + right].y;
+						if(right_half && down_half) tmp += pel_ref[y + down + 1][x + right + 1].y;
+						tmp /= (right_half? 2: 1)*(down_half? 2: 1);
+
+						pel[y][x].y = isAvg? (pel[y][x].y + tmp)/2: tmp;
 					}
 					break;
 				case 4:
-					right = (recon_right/2) >> 1;
-					right_half = (recon_right/2)&1;
-					down = (recon_down/2) >> 1;
-					down_half = (recon_down/2)&1;
 					for(int m = 0; m < 16; m++) for(int n = 0; n < 16; n++){
-						int y = mb_row*16 + m;
-						int x = mb_column*16 + n;
+						y = mb_row*16 + m;
+						x = mb_column*16 + n;
 						if(y >= vertical_size || x >= horizontal_size) continue;
-						pel[y][x].cb = pel_ref[y + down][x + right].cb;
-						if(right_half) pel[y][x].cb += pel_ref[y + down][x + right + 1].cb;
-						if(down_half) pel[y][x].cb += pel_ref[y + down + 1][x + right].cb;
-						if(right_half && down_half) pel[y][x].cb += pel_ref[y + down + 1][x + right + 1].cb;
-						pel[y][x].cb /= (right_half? 2: 1)*(down_half? 2: 1);
+	
+						tmp = pel_ref[y + down][x + right].cb;
+						if(right_half) tmp += pel_ref[y + down][x + right + 1].cb;
+						if(down_half) tmp += pel_ref[y + down + 1][x + right].cb;
+						if(right_half && down_half) tmp += pel_ref[y + down + 1][x + right + 1].cb;
+						tmp /= (right_half? 2: 1)*(down_half? 2: 1);
+
+						pel[y][x].cb = isAvg? (pel[y][x].cb + tmp)/2: tmp;
 					}
 					break;
 				case 5:
-					right = (recon_right/2) >> 1;
-					right_half = (recon_right/2)&1;
-					down = (recon_down/2) >> 1;
-					down_half = (recon_down/2)&1;
 					for(int m = 0; m < 16; m++) for(int n = 0; n < 16; n++){
-						int y = mb_row*16 + m;
-						int x = mb_column*16 + n;
+						y = mb_row*16 + m;
+						x = mb_column*16 + n;
 						if(y >= vertical_size || x >= horizontal_size) continue;
-						pel[y][x].cr = pel_ref[y + down][x + right].cr;
-						if(right_half) pel[y][x].cr += pel_ref[y + down][x + right + 1].cr;
-						if(down_half) pel[y][x].cr += pel_ref[y + down + 1][x + right].cr;
-						if(right_half && down_half) pel[y][x].cr += pel_ref[y + down + 1][x + right + 1].cr;
-						pel[y][x].cr /= (right_half? 2: 1)*(down_half? 2: 1);
+	
+						tmp = pel_ref[y + down][x + right].cr;
+						if(right_half) tmp += pel_ref[y + down][x + right + 1].cr;
+						if(down_half) tmp += pel_ref[y + down + 1][x + right].cr;
+						if(right_half && down_half) tmp += pel_ref[y + down + 1][x + right + 1].cr;
+						tmp /= (right_half? 2: 1)*(down_half? 2: 1);
+
+						pel[y][x].cr = isAvg? (pel[y][x].cr + tmp)/2: tmp;
 					}
 					break;
 				default:
