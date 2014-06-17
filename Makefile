@@ -1,6 +1,6 @@
-IN=../MPEG/I_ONLY.M1V
+#IN=../MPEG/I_ONLY.M1V
 #IN=../MPEG/IP_ONLY.M1V
-#IN=../MPEG/IPB_ALL.M1V
+IN=../MPEG/IPB_ALL.M1V
 OUT=test
 all:
 	g++ -g -o main main.cpp

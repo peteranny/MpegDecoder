@@ -1,0 +1,1230 @@
+#include "mpeg1.h"
+#include <assert.h>
+#include <math.h>
+#include <string.h>
+#include <time.h>
+#include <assert.h>
+#include <stdlib.h>
+//#include <windows.h>
+#include <algorithm>
+using namespace std;
+
+//#define _DEBUG
+
+#ifdef _DEBUG
+#define MSG(string, args...) fprintf(stderr, string, ## args)
+#else 
+#define MSG(string, args...)
+#endif
+
+#define VI(var) MSG("%s = %d\n",#var,var)
+#define VX(var) MSG("%s = %X\n",#var,var)
+
+#define SZ_INPUT_BUFFER 1024
+#define SZ_PICTURE_BUFFER 32
+
+#define picture_start_code      0x00000100
+
+#define user_data_start_code    0x000001B2 
+#define sequence_header_code    0x000001B3 
+#define sequence_error_code     0x000001B4 
+#define extension_start_code    0x000001B5 
+#define sequence_end_code       0x000001B7 
+#define group_start_code        0x000001B8
+
+#define PICTURE_TYPE_I   1
+#define PICTURE_TYPE_P   2
+#define PICTURE_TYPE_B   3
+#define PICTURE_TYPE_D   4
+
+#define MN64(S) for( int m=0; m<8; m++ ) for( int n=0; n<8; n++ ) S[m][n]
+
+inline int SIGN(int x){
+    if(x>0) return 1;
+    if(x<0) return -1;
+    return 0;
+}
+
+inline void idct_1(double *F,double *f){
+    const double pi=acos(-1);
+    const double C2=(2*cos(pi/8));
+    const double C4=(sqrt(2));
+    const double C6=(2*sin(pi/8));
+    const double Q=C2-C6;
+    const double R=C2+C6;
+    double tmp1,tmp2;
+    double m[8];
+
+    tmp1 = F[1]+F[7]; tmp2 = F[3]+F[5];
+    m[0]=F[0],m[1]=F[4],m[2]=F[2]-F[6],m[3]=F[2]+F[6],m[4]=F[5]-F[3],m[5]=tmp1-tmp2,m[6]=F[1]-F[7],m[7]=tmp1+tmp2;
+
+    tmp1 = C6*(m[4]+m[6]);
+    F[0]=m[0],F[1]=m[1],F[2]=m[2]*C4,F[3]=m[3],F[4]=-Q*m[4]-tmp1,F[5]=m[5]*C4,F[6]=R*m[6]-tmp1,F[7]=m[7];
+
+    m[4]=F[6]-F[7];
+    m[0]=m[4]-F[5],m[1]=F[0]-F[1],m[2]=F[2]-F[3],m[3]=F[0]+F[1],m[5]=F[4],m[6]=F[3],m[7]=F[7];
+
+    F[0]=m[7],F[1]=m[0],F[2]=m[4],F[3]=m[1]+m[2],F[4]=m[3]+m[6],F[5]=m[1]-m[2],F[6]=m[3]-m[6],F[7]=m[5]-m[0];
+
+    f[0*8]=F[4]+F[0];
+    f[1*8]=F[3]+F[2];
+    f[2*8]=F[5]-F[1];
+    f[3*8]=F[6]-F[7];
+    f[4*8]=F[6]+F[7];
+    f[5*8]=F[5]+F[1];
+    f[6*8]=F[3]-F[2];
+    f[7*8]=F[4]-F[0];
+}
+
+inline void idct(int S[8][8]){
+    const double pi=acos(-1);
+    const double X[8]={
+        4*sqrt(2)*cos(0*pi/16)/16,
+        4*cos(1*pi/16)/8,
+        4*cos(2*pi/16)/8,
+        4*cos(3*pi/16)/8,
+        4*cos(4*pi/16)/8,
+        4*cos(5*pi/16)/8,
+        4*cos(6*pi/16)/8,
+        4*cos(7*pi/16)/8
+    };
+    double x[64],y[64];
+    for( int i=0; i<8; i++ ){
+        for( int j=0; j<8; j++ ){
+            x[i*8+j]=S[i][j]*X[i]*X[j];
+        }
+    }
+    for( int i=0; i<8; i++ ) idct_1(x+8*i,y+i);
+    for( int i=0; i<8; i++ ) idct_1(y+8*i,x+i);
+    for( int i=0; i<8; i++ ){
+        for( int j=0; j<8; j++ ){
+            S[i][j] = (int)(x[i*8+j]+0.5);
+        }
+    }
+}
+
+
+const double table_pel_aspect_ratio[16]={
+    0,      //forbidden 
+    1.0000,
+    0.6735,
+    0.7031,
+    0.7615,
+    0.8055,
+    0.8437,
+    0.8935,
+    0.9375,
+    0.9815,
+    1.0255,
+    1.0695,
+    1.1250,
+    1.1575,
+    1.2015
+};
+
+const double table_picture_rate[16]={
+    0,      //forbidden
+    23.976,
+    24,
+    25,
+    29.97,
+    30,
+    50,
+    59.94,
+    60
+};
+
+const int scan[8][8]={
+    {0, 1, 5, 6,14,15,27,28},
+    {2, 4, 7,13,16,26,29,42},
+    {3, 8,12,17,25,30,41,43},
+    {9,11,18,24,31,40,44,53},
+    {10,19,23,32,39,45,52,54},
+    {20,22,33,38,46,51,55,60},
+    {21,34,37,47,50,56,59,61},
+    {35,36,48,49,57,58,62,63}
+};
+
+const int default_intra_quantizer_matrix[8][8]={
+    {8,16,19,22,26,27,29,34},
+    {16,16,22,24,27,29,34,37},
+    {19,22,26,27,29,34,34,38},
+    {22,22,26,27,29,34,37,40},
+    {22,26,27,29,32,35,40,48},
+    {26,27,29,32,35,40,48,58},
+    {26,27,29,34,38,46,56,69},
+    {27,29,35,38,46,56,69,83}
+};
+
+MPEG1::MPEG1(){
+
+    ht1.load("table/1");
+    ht2a.load("table/2a");
+    ht2b.load("table/2b");
+    ht2c.load("table/2c");
+    ht3.load("table/3");
+    ht4.load("table/4");
+    ht5a.load("table/5a");
+    ht5b.load("table/5b");
+    ht5c.load("table/5c");
+    ht5d.load("table/5d");
+	fprintf(stderr, "!!\n");
+}
+
+int MPEG1::loadInfo(const char *filename){
+    finput = fopen(filename,"rb");
+    inputBuffer = new u32[SZ_INPUT_BUFFER];
+    inputBufPtr = SZ_INPUT_BUFFER<<5;
+
+    next_start_code();
+    sequence_header();
+    for( int i=0; i<SZ_PICTURE_BUFFER; i++ ){
+        if(picBuf[i]) delete picBuf[i];
+        picBuf[i] = new PICTURE(mb_height*16,mb_width*16,i);
+    }
+    picture_counter = 0;
+    last_header = 0;
+    gop_filepos.clear();
+    while(fast_forward());
+    total_picture = picture_counter;
+    gop_filepos.back().pic = total_picture;
+
+    delete[] inputBuffer;
+    fclose(finput);
+    return 0;
+}
+
+int MPEG1::open(const char *filename,double pos){
+    finput = fopen(filename,"rb");
+    inputBuffer = new u32[SZ_INPUT_BUFFER];
+    inputBufPtr = SZ_INPUT_BUFFER<<5;
+
+    decodingFlag = 1;
+    video_sequence(pos);
+
+    delete[] inputBuffer;
+    fclose(finput);
+
+    closeFileFlag = 0;
+    decodingFlag = 0;
+    //pic_queue_counter = 0;
+    return 0;
+}
+
+int tt=0;
+PICTURE* MPEG1::nextPicture(){
+    if((!pic_queue_end && pic_queue_counter<SZ_PICTURE_BUFFER/4) || pic_queue_counter<=0){
+        return NULL;
+    }else{
+        picture_counter++;
+        PICTURE* pic = picBuf[pic_queue_ptr];
+        pic_queue_ptr = (pic_queue_ptr+1)%SZ_PICTURE_BUFFER;
+        pic_queue_counter--;
+        return pic;
+    }
+}
+
+int MPEG1::close(){
+    if(decodingFlag){
+        closeFileFlag = 1;
+        while(closeFileFlag){
+			//Sleep(1);
+        }
+        pic_queue_counter = 0;
+    }
+    return 0;
+}
+
+double MPEG1::getPos(){
+    if((!pic_queue_end && pic_queue_counter<SZ_PICTURE_BUFFER/4) || pic_queue_counter<=0){
+        return -1;
+    }
+    return (double)picture_counter/total_picture;
+}
+
+inline void MPEG1::checkBuffer(int num){
+    if(inputBufPtr+num>(SZ_INPUT_BUFFER<<5)){
+        int j=0;
+        for( int i=(inputBufPtr>>5); i<SZ_INPUT_BUFFER; i++ ){
+            inputBuffer[j++] = inputBuffer[i];
+        }
+        int len=fread(inputBuffer+j,1,(SZ_INPUT_BUFFER-j)*4,finput);
+        for( int i=len; i<SZ_INPUT_BUFFER; i++ ){
+            inputBuffer[i] = 0;
+        }
+        for( int i=j; j<SZ_INPUT_BUFFER; j++ ){
+            u32 val = ((inputBuffer[j]<<8)&0xFF00FF00)|((inputBuffer[j]>>8)&0xFF00FF);
+            inputBuffer[j] = (val<<16)|(val>>16);
+        }
+        inputBufPtr &= 0x1F;
+    }
+}
+
+
+inline void MPEG1::skipBits(int num){
+    inputBufPtr += num;
+}
+
+inline u32 MPEG1::readBits(int num){
+    u32 r = nextBits(num);
+    skipBits(num);
+    return r;
+}
+
+inline u32 MPEG1::readBits32(){
+    u32 r = nextBits32();
+    skipBits(32);
+    return r;
+}
+
+inline u32 MPEG1::nextBits(int num){
+    checkBuffer(num);
+    int g = 32-(inputBufPtr&0x1F);
+    if(num<=g){
+        return (inputBuffer[inputBufPtr>>5]>>(g-num))&((1<<num)-1);
+    }else{
+        return ((inputBuffer[inputBufPtr>>5]<<(num-g))|(inputBuffer[(inputBufPtr>>5)+1]>>(32-num+g)))&((1<<num)-1);
+    }
+}
+
+inline u32 MPEG1::nextBits32(){
+    checkBuffer(32);
+    int g = 32-(inputBufPtr&0x1F);
+    if(g==32){
+        return inputBuffer[inputBufPtr>>5];
+    }else{
+        return ((inputBuffer[inputBufPtr>>5]<<((inputBufPtr&0x1F)))|(inputBuffer[(inputBufPtr>>5)+1]>>g));
+    }
+}
+
+inline int MPEG1::next_start_code(){
+    inputBufPtr = (inputBufPtr+7)&(-8);
+    while((nextBits32()&0xFFFFFF00)!=0x00000100) skipBits(8);
+}
+
+inline void MPEG1::marker_bit(){
+    readBits(1);
+}
+
+inline void MPEG1::skip_extra_data(){
+    int next_code = nextBits32();
+    if(next_code==extension_start_code){
+        readBits(32); //extension_start_code
+        next_start_code(); //skip all extension data
+        next_code = nextBits32();
+    }
+    if(next_code==user_data_start_code){
+        readBits(32); //user_data_start_code
+        next_start_code(); //skip all user data
+    }
+}
+
+inline int MPEG1::vlc_decode(const HTABLE *ht){
+    int x = nextBits(8);
+    if(ht->rl[0][x]>0){
+        skipBits(ht->rl[0][x]);
+        return ht->rs[0][x];
+    }else if(ht->rl[0][x]<0){
+        int p = -ht->rl[0][x];
+        skipBits(8);
+        x = nextBits(8);
+        skipBits(ht->rl[p][x]);
+        return ht->rs[p][x];
+    }else{
+        VX(x);
+        MSG("VLC parsing error");
+        assert(false);
+    }    
+}
+
+int MPEG1::vlc_macro_block_address(){
+    return vlc_decode(&ht1);
+}
+
+int MPEG1::vlc_macro_block_type(){
+    if(picture_coding_type==PICTURE_TYPE_I){
+        return vlc_decode(&ht2a);
+    }else if(picture_coding_type==PICTURE_TYPE_P){
+        return vlc_decode(&ht2b);
+    }else if(picture_coding_type==PICTURE_TYPE_B){
+        return vlc_decode(&ht2c);
+    }else{ //D
+        return 1;
+    }
+}
+
+int MPEG1::vlc_coded_block_pattern(){
+    return vlc_decode(&ht3);
+}
+
+int MPEG1::vlc_motion_vector_code(){
+    return vlc_decode(&ht4);
+}
+
+int MPEG1::vlc_dct_dc_size_luminance(){
+    return vlc_decode(&ht5a);
+}
+
+int MPEG1::vlc_dct_dc_size_chrominance(){
+    return vlc_decode(&ht5b);
+}
+
+int MPEG1::vlc_coeff(int first){
+    int run,level;
+    int r = first?vlc_decode(&ht5c):vlc_decode(&ht5d);
+    if(r!=-1){
+        run = r&0x3f;
+        level = (r>>6);
+        if(readBits(1)==1){
+            level = -level;
+        }
+    }else{
+        run = readBits(6);
+        level = readBits(8);
+        if(level==0x80){
+            level = readBits(8)-256;
+        }else if(level==0x00){
+            level = readBits(8);
+        }else{
+            if(level&0x80){
+                level -= 256;
+            }
+        }
+    }
+    return (level<<6)|run;
+}
+
+int MPEG1::video_sequence(double pos){
+    next_start_code();
+    picL = picBuf[SZ_PICTURE_BUFFER-2];
+    picR = picBuf[SZ_PICTURE_BUFFER-1];
+    gop_counter = 0;
+    pic_queue_ptr = 0;
+    pic_queue_counter = 0;
+    pic_queue_end = 0;
+    picture_counter = 0;
+
+    if(pos!=0){
+        int index=min(max((int)(gop_filepos.size()*pos),0),(int)gop_filepos.size());
+        fseek(finput,gop_filepos[index].header,SEEK_SET);
+        picture_counter = gop_filepos[index].pic;
+        inputBufPtr = SZ_INPUT_BUFFER<<5;
+        while(1){
+            next_start_code();
+            if(nextBits32()==sequence_header_code) break;
+            else skipBits(32);
+        }
+        sequence_header();
+        fseek(finput,gop_filepos[index].pos,SEEK_SET);
+        inputBufPtr = SZ_INPUT_BUFFER<<5;
+        while(1){
+            next_start_code();
+            if(nextBits32()==group_start_code) break;
+            else skipBits(32);
+        }
+        int firstGOP = 1;
+        pic_queue_counter = -100;
+        do{
+            if(group_of_pictures()){
+                pic_queue_end = 1;
+                return 0;
+            }
+            if(firstGOP){
+                gop_counter = 0;
+                pic_queue_ptr = 0;
+                pic_queue_counter = 0;
+                pic_queue_end = 0;
+                firstGOP = 0;
+            }
+        }while(nextBits32()==group_start_code);
+    }
+    while(nextBits32()==sequence_header_code){
+        sequence_header();
+        do{
+            if(group_of_pictures()){
+                pic_queue_end = 1;
+                return 0;
+            }
+        }while(nextBits32()==group_start_code);
+    }
+    pic_queue_end = 1;
+    return 0;
+}
+
+int MPEG1::sequence_header(){
+    readBits32(); //sequence_header_code
+
+    horizontal_size = readBits(12);
+    vertical_size = readBits(12);
+    mb_width = (horizontal_size+15)/16;
+    mb_height = (vertical_size+15)/16;
+
+    int pel_aspect_ratio_flag = readBits(4);
+    pel_aspect_ratio = table_pel_aspect_ratio[pel_aspect_ratio_flag];
+
+    int picture_rate_flag = readBits(4);
+    picture_rate = table_picture_rate[picture_rate_flag];
+
+    bit_rate = readBits(18);
+
+    marker_bit();
+
+    vbv_buffer_size = readBits(10);
+
+    constrained_parameter_flag = readBits(1);
+
+    int load_intra_quantizer_matrix_flag = readBits(1);
+    if(load_intra_quantizer_matrix_flag){
+        int zigzag[64];
+        for( int i=0; i<64; i++ ){
+            zigzag[i] = readBits(8);
+        }
+        for( int i=0; i<8; i++ ){
+            for( int j=0; j<8; j++ ){
+                intra_quant[i][j] = zigzag[scan[i][j]];
+            }
+        }
+    }else{
+        //default_intra_quantizer_matrix
+        for( int i=0; i<8; i++ ){
+            for( int j=0; j<8; j++ ){
+                intra_quant[i][j] = default_intra_quantizer_matrix[i][j];
+            }
+        }
+    }
+
+    int load_non_intra_quantizer_matrix_flag = readBits(1);
+    if(load_non_intra_quantizer_matrix_flag){
+        int zigzag[64];
+        for( int i=0; i<64; i++ ){
+            zigzag[i] = readBits(8);
+        }
+        for( int i=0; i<8; i++ ){
+            for( int j=0; j<8; j++ ){
+                non_intra_quant[i][j] = zigzag[scan[i][j]];
+            }
+        }
+    }else{
+        //default_non_intra_quantizer_matrix
+        for( int i=0; i<8; i++ ){
+            for( int j=0; j<8; j++ ){
+                non_intra_quant[i][j] = 16;
+            }
+        }
+    }
+    next_start_code();
+    skip_extra_data();
+}
+
+int MPEG1::group_of_pictures(){
+    readBits32(); //group_start_code
+
+    time_code = readBits(25);
+    drop_frame_flag = (time_code>>24)&1;
+    time_code_hours = (time_code>>19)&0x1F;
+    time_code_minutes = (time_code>>13)&0x3F;
+    time_code_seconds = (time_code>>6)&0x3F;
+    time_code_pictures = (time_code)&0x3F;
+
+    closed_gop = readBits(1);
+
+    broken_link = readBits(1);
+
+    next_start_code();
+    skip_extra_data();
+
+    int pc = 0;
+    do{
+        while(pic_queue_counter>=SZ_PICTURE_BUFFER/2){
+            if(closeFileFlag) return 1;
+            //Sleep(10);
+        }
+        picture();
+        pic_queue_counter++;
+        pc++;
+    }while(nextBits32()==picture_start_code);
+    gop_counter += pc;
+    return 0;
+}
+
+
+int MPEG1::fast_forward(){
+    inputBufPtr = (inputBufPtr+7)&(-8);
+    while(1){
+        int code = nextBits32();
+        if((code&0xFFFFFF00)==0x100){
+            if(code==group_start_code){
+                break;
+            }else if(code==sequence_header_code){
+                last_header=max(ftell(finput)-SZ_INPUT_BUFFER*4+inputBufPtr/32-10,0L);
+                skipBits(32);
+            }else if(code==picture_start_code){
+                picture_counter++;
+                skipBits(32);
+            }else if(code==sequence_end_code){
+                return 0;
+            }else{
+                skipBits(32);
+            }
+        }else skipBits(8);
+    }
+    readBits32();
+
+    time_code = readBits(25);
+    drop_frame_flag = (time_code>>24)&1;
+    time_code_hours = (time_code>>19)&0x1F;
+    time_code_minutes = (time_code>>13)&0x3F;
+    time_code_seconds = (time_code>>6)&0x3F;
+    time_code_pictures = (time_code)&0x3F;
+
+    if(gop_filepos.size()){
+        gop_filepos.back().pic = picture_counter;
+    }
+    gop_filepos.push_back(GOP(0,time_code_hours*3600+time_code_minutes*60+time_code_seconds,
+                max(ftell(finput)-SZ_INPUT_BUFFER*4+inputBufPtr/32-10,0L),last_header));
+    return 1;
+}
+
+int MPEG1::picture(){
+    readBits32(); //picture_start_code
+
+    temporal_reference = readBits(10);
+
+    picture_coding_type = readBits(3);
+
+    picC = picBuf[(gop_counter+temporal_reference)%SZ_PICTURE_BUFFER];
+    picC->clear();
+    if(picture_coding_type==PICTURE_TYPE_I || picture_coding_type==PICTURE_TYPE_P){
+        picL = picR;
+        picR = picC;
+    }
+
+    vbv_delay = readBits(16);
+
+    if(picture_coding_type==PICTURE_TYPE_P || picture_coding_type==PICTURE_TYPE_B){
+        full_pel_forward_vector = readBits(1);
+        forward_f_code = readBits(3);
+        forward_r_size = forward_f_code-1;
+        forward_f = (1<<forward_r_size);
+    }
+
+    if(picture_coding_type==PICTURE_TYPE_B){
+        full_pel_backward_vector = readBits(1);
+        backward_f_code = readBits(3);
+        backward_r_size = backward_f_code-1;
+        backward_f = (1<<backward_r_size);
+    }
+
+    while(readBits(1)==1){
+        readBits(8); //extra_information_picture
+    }
+
+    next_start_code();
+    skip_extra_data();
+    while(1){
+        slice();
+        int nextcode = nextBits32();
+        if(nextcode<0x00000101 || nextcode>0x000001AF) break;
+    }
+}
+
+int MPEG1::slice(){
+    slice_start_code = readBits32();
+
+    slice_vertical_position = slice_start_code&0xFF;
+    macroblock_address = (slice_vertical_position-1)*mb_width-1;
+
+    quantizer_scale = readBits(5);
+
+    while(readBits(1)==1){
+        readBits(8);
+    }
+    past_intra_address = -2;
+    recon_down_for_prev = recon_right_for_prev = 0;
+    recon_down_back_prev = recon_right_back_prev = 0;
+    do{
+        macro_block();
+    }while(nextBits(23)!=0);
+    next_start_code();
+}
+
+int MPEG1::macro_block(){
+    while(nextBits(11)==0xF) skipBits(11);
+
+    macroblock_address_increment = 0;
+    while(nextBits(11)==0x8){
+        skipBits(11);
+        macroblock_address_increment += 33;
+    }
+    macroblock_address_increment += vlc_macro_block_address();
+    for( int i=0; i<macroblock_address_increment-1; i++ ){
+        macroblock_address++;
+        mb_row = macroblock_address / mb_width;
+        mb_column = macroblock_address % mb_width;
+        if(picture_coding_type==PICTURE_TYPE_P){
+            macroblock_skipped_P();
+            recon_down_for_prev = recon_right_for_prev = 0;
+        }else if(picture_coding_type==PICTURE_TYPE_B){
+            macroblock_skipped_B();
+        }
+    }
+    macroblock_address++;
+    mb_row = macroblock_address / mb_width;
+    mb_column = macroblock_address % mb_width;
+
+    macroblock_type = vlc_macro_block_type();
+    macroblock_quant = (macroblock_type>>4)&1;
+    macroblock_motion_forward = (macroblock_type>>3)&1;
+    macroblock_motion_backward = (macroblock_type>>2)&1;
+    macroblock_pattern = (macroblock_type>>1)&1;
+    macroblock_intra = (macroblock_type)&1;
+
+    if(macroblock_quant){
+        quantizer_scale = readBits(5);
+    }
+
+    if(macroblock_motion_forward){
+        motion_horizontal_forward_code = vlc_motion_vector_code(); 
+        if((forward_f!=1) && (motion_horizontal_forward_code!=0)){
+            motion_horizontal_forward_r = readBits(forward_r_size);
+        }
+        motion_vertical_forward_code = vlc_motion_vector_code();
+        if((forward_f!=1) && (motion_vertical_forward_code!=0)){
+            motion_vertical_forward_r = readBits(forward_r_size);
+        }
+    }
+
+    if(macroblock_motion_backward){
+        motion_horizontal_backward_code = vlc_motion_vector_code(); 
+        if((backward_f!=1) && (motion_horizontal_backward_code!=0)){
+            motion_horizontal_backward_r = readBits(backward_r_size);
+        }
+        motion_vertical_backward_code = vlc_motion_vector_code();
+        if((backward_f!=1) && (motion_vertical_backward_code!=0)){
+            motion_vertical_backward_r = readBits(backward_r_size);
+        }
+    }
+
+    if(macroblock_intra){
+        for( int i=0; i<6; i++ ){
+            pattern_code[i] = 1;
+        }
+    }else{
+        for( int i=0; i<6; i++ ){
+            pattern_code[i] = 0;
+        }
+    }
+
+    if(macroblock_pattern){
+        coded_block_pattern = vlc_coded_block_pattern();
+        for( int i=0; i<6; i++ ){
+            if(coded_block_pattern&(1<<(5-i))) pattern_code[i] = 1;
+        }
+    }
+
+    if(picture_coding_type==PICTURE_TYPE_P){
+        motion_vector_P();
+    }else if(picture_coding_type==PICTURE_TYPE_B){
+        motion_vector_B();
+    }
+    for( int i=0; i<6; i++ ){
+        block(i);
+        if(picture_coding_type==PICTURE_TYPE_I){
+            intra_coded_block_decode(i);
+        }else if(picture_coding_type==PICTURE_TYPE_P){
+            if(macroblock_intra){
+                intra_coded_block_decode(i);
+            }else{
+                predictive_block_P_decode(i);
+            }
+        }else if(picture_coding_type==PICTURE_TYPE_B){
+            if(macroblock_intra){
+                intra_coded_block_decode(i);
+                recon_down_for_prev = recon_right_for_prev = 0;
+                recon_down_back_prev = recon_right_back_prev = 0;
+            }else{
+                predictive_block_B_decode(i);
+            }
+        }
+    }
+
+    if(picture_coding_type==PICTURE_TYPE_D){
+        readBits(1);
+    }
+}
+
+int MPEG1::block(int i){
+    memset(dct_zz,0,sizeof(dct_zz));
+    if(pattern_code[i]){
+        int run = 0;
+        if(macroblock_intra){
+            if(i<4){
+                dct_dc_size_luminance = vlc_dct_dc_size_luminance();
+                if(dct_dc_size_luminance!=0){
+                    dct_dc_differential = readBits(dct_dc_size_luminance);
+                    if(dct_dc_differential & (1<<(dct_dc_size_luminance-1))){
+                        dct_zz[0] = dct_dc_differential;
+                    }else{
+                        dct_zz[0] = (-1<<(dct_dc_size_luminance))|(dct_dc_differential+1);
+                    }
+                }
+            }else{
+                dct_dc_size_chrominance = vlc_dct_dc_size_chrominance();
+                if(dct_dc_size_chrominance!=0){
+                    dct_dc_differential = readBits(dct_dc_size_chrominance);
+                    if(dct_dc_differential & (1<<(dct_dc_size_chrominance-1))){
+                        dct_zz[0] = dct_dc_differential;
+                    }else{
+                        dct_zz[0] = (-1<<(dct_dc_size_chrominance))|(dct_dc_differential+1);
+                    }
+                }
+            }
+        }else{
+            dct_coeff_first = vlc_coeff(1);
+            run = dct_coeff_first&0x3F;
+            dct_zz[run] = (dct_coeff_first>>6);
+        }
+        if(picture_coding_type!=PICTURE_TYPE_D){
+            while(nextBits(2)!=0x2){
+                dct_coeff_next = vlc_coeff(0);
+                int pr=run;
+                run += (dct_coeff_next&0x3F)+1;
+                dct_zz[run] = (dct_coeff_next>>6);
+            }
+            skipBits(2); //end_of_block
+        }
+    }
+}
+
+int MPEG1::motion_vector_P(){
+    int complement_horizontal_forward_r;
+    int complement_vertical_forward_r;
+    int right_little;
+    int right_big;
+    int down_little;
+    int down_big;
+    int vmax,vmin;
+    int new_vector;
+
+    if(!macroblock_motion_forward){
+        recon_down_for = recon_right_for = 0;
+    }else{
+        if(forward_f==1 || motion_horizontal_forward_code==0){
+            complement_horizontal_forward_r = 0;
+        }else{
+            complement_horizontal_forward_r = forward_f - 1 - motion_horizontal_forward_r;
+        }
+        if(forward_f==1 || motion_vertical_forward_code==0){
+            complement_vertical_forward_r = 0;
+        }else{
+            complement_vertical_forward_r = forward_f - 1 - motion_vertical_forward_r;
+        }
+        right_little = motion_horizontal_forward_code * forward_f;
+        if(right_little==0){
+            right_big = 0;
+        }else{
+            if(right_little>0){
+                right_little = right_little - complement_horizontal_forward_r;
+                right_big = right_little - 32 * forward_f;
+            }else{
+                right_little = right_little + complement_horizontal_forward_r;
+                right_big = right_little + 32 * forward_f;
+            }
+        }
+        down_little = motion_vertical_forward_code * forward_f;
+        if(down_little==0){
+            down_big = 0;
+        }else{
+            if(down_little>0){
+                down_little = down_little - complement_vertical_forward_r;
+                down_big = down_little - 32 * forward_f;
+            }else{
+                down_little = down_little + complement_vertical_forward_r;
+                down_big = down_little + 32 * forward_f;
+            }
+        }
+        vmax = 16 * forward_f -1;
+        vmin = -16 * forward_f;
+        new_vector = recon_right_for_prev + right_little;
+        if(new_vector<=vmax && new_vector>=vmin){
+            recon_right_for = recon_right_for_prev+right_little;
+        }else{
+            recon_right_for = recon_right_for_prev+right_big;
+        }
+        new_vector = recon_down_for_prev + down_little;
+        if(new_vector<=vmax && new_vector>=vmin){
+            recon_down_for = recon_down_for_prev+down_little;
+        }else{
+            recon_down_for = recon_down_for_prev+down_big;
+        }
+    }
+    recon_right_for_prev = recon_right_for;
+    recon_down_for_prev = recon_down_for;
+    if(full_pel_forward_vector){
+        recon_right_for = recon_right_for<<1;
+        recon_down_for = recon_down_for<<1;
+    }
+}
+
+int MPEG1::motion_vector_B(){
+    int complement_horizontal_forward_r;
+    int complement_vertical_forward_r;
+    int complement_horizontal_backward_r;
+    int complement_vertical_backward_r;
+    int right_little;
+    int right_big;
+    int down_little;
+    int down_big;
+    int vmax,vmin;
+    int new_vector;
+
+    //forward
+    if(!macroblock_motion_forward){
+        recon_down_for = recon_down_for_prev;
+        recon_right_for = recon_right_for_prev;
+    }else{
+        if(forward_f==1 || motion_horizontal_forward_code==0){
+            complement_horizontal_forward_r = 0;
+        }else{
+            complement_horizontal_forward_r = forward_f - 1 - motion_horizontal_forward_r;
+        }
+        if(forward_f==1 || motion_vertical_forward_code==0){
+            complement_vertical_forward_r = 0;
+        }else{
+            complement_vertical_forward_r = forward_f - 1 - motion_vertical_forward_r;
+        }
+        right_little = motion_horizontal_forward_code * forward_f;
+        if(right_little==0){
+            right_big = 0;
+        }else{
+            if(right_little>0){
+                right_little = right_little - complement_horizontal_forward_r;
+                right_big = right_little - 32 * forward_f;
+            }else{
+                right_little = right_little + complement_horizontal_forward_r;
+                right_big = right_little + 32 * forward_f;
+            }
+        }
+        down_little = motion_vertical_forward_code * forward_f;
+        if(down_little==0){
+            down_big = 0;
+        }else{
+            if(down_little>0){
+                down_little = down_little - complement_vertical_forward_r;
+                down_big = down_little - 32 * forward_f;
+            }else{
+                down_little = down_little + complement_vertical_forward_r;
+                down_big = down_little + 32 * forward_f;
+            }
+        }
+        vmax = 16 * forward_f -1;
+        vmin = -16 * forward_f;
+        new_vector = recon_right_for_prev + right_little;
+        if(new_vector<=vmax && new_vector>=vmin){
+            recon_right_for = recon_right_for_prev+right_little;
+        }else{
+            recon_right_for = recon_right_for_prev+right_big;
+        }
+        new_vector = recon_down_for_prev + down_little;
+        if(new_vector<=vmax && new_vector>=vmin){
+            recon_down_for = recon_down_for_prev+down_little;
+        }else{
+            recon_down_for = recon_down_for_prev+down_big;
+        }
+    }
+    recon_right_for_prev = recon_right_for;
+    recon_down_for_prev = recon_down_for;
+    if(full_pel_forward_vector){
+        recon_right_for = recon_right_for<<1;
+        recon_down_for = recon_down_for<<1;
+    }
+
+    //backward
+    if(!macroblock_motion_backward){
+        recon_down_back = recon_down_back_prev;
+        recon_right_back = recon_right_back_prev;
+    }else{
+        if(backward_f==1 || motion_horizontal_backward_code==0){
+            complement_horizontal_backward_r = 0;
+        }else{
+            complement_horizontal_backward_r = backward_f - 1 - motion_horizontal_backward_r;
+        }
+        if(backward_f==1 || motion_vertical_backward_code==0){
+            complement_vertical_backward_r = 0;
+        }else{
+            complement_vertical_backward_r = backward_f - 1 - motion_vertical_backward_r;
+        }
+        right_little = motion_horizontal_backward_code * backward_f;
+        if(right_little==0){
+            right_big = 0;
+        }else{
+            if(right_little>0){
+                right_little = right_little - complement_horizontal_backward_r;
+                right_big = right_little - 32 * backward_f;
+            }else{
+                right_little = right_little + complement_horizontal_backward_r;
+                right_big = right_little + 32 * backward_f;
+            }
+        }
+        down_little = motion_vertical_backward_code * backward_f;
+        if(down_little==0){
+            down_big = 0;
+        }else{
+            if(down_little>0){
+                down_little = down_little - complement_vertical_backward_r;
+                down_big = down_little - 32 * backward_f;
+            }else{
+                down_little = down_little + complement_vertical_backward_r;
+                down_big = down_little + 32 * backward_f;
+            }
+        }
+        vmax = 16 * backward_f -1;
+        vmin = -16 * backward_f;
+        new_vector = recon_right_back_prev + right_little;
+        if(new_vector<=vmax && new_vector>=vmin){
+            recon_right_back = recon_right_back_prev+right_little;
+        }else{
+            recon_right_back = recon_right_back_prev+right_big;
+        }
+        new_vector = recon_down_back_prev + down_little;
+        if(new_vector<=vmax && new_vector>=vmin){
+            recon_down_back = recon_down_back_prev+down_little;
+        }else{
+            recon_down_back = recon_down_back_prev+down_big;
+        }
+    }
+    recon_right_back_prev = recon_right_back;
+    recon_down_back_prev = recon_down_back;
+    if(full_pel_backward_vector){
+        recon_right_back = recon_right_back<<1;
+        recon_down_back = recon_down_back<<1;
+    }
+}
+
+int ttt=0;
+int MPEG1::intra_coded_block_decode(int i){
+
+    for( int m=0; m<8; m++ ){
+        for( int n=0; n<8; n++ ){
+            dct_recon[m][n] = (2*dct_zz[scan[m][n]]*quantizer_scale*intra_quant[m][n])/16;
+            if((dct_recon[m][n]&1)==0){
+                dct_recon[m][n] = dct_recon[m][n]-SIGN(dct_recon[m][n]);
+            }
+            if(dct_recon[m][n]>2047) dct_recon[m][n] = 2047;
+            else if(dct_recon[m][n]<-2048) dct_recon[m][n] = -2048;
+        }
+    }
+
+    if(macroblock_address-past_intra_address>1){
+        dct_dc_y_past = dct_dc_cb_past = dct_dc_cr_past = 1024;
+    }
+    if(i<4){
+        dct_recon[0][0] = dct_dc_y_past + dct_zz[0]*8;
+        dct_dc_y_past = dct_recon[0][0];
+    }else if(i==4){
+        dct_recon[0][0] = dct_dc_cb_past + dct_zz[0]*8;
+        dct_dc_cb_past = dct_recon[0][0];
+    }else{
+        dct_recon[0][0] = dct_dc_cr_past + dct_zz[0]*8;
+        dct_dc_cr_past = dct_recon[0][0];
+    }
+    past_intra_address = macroblock_address;
+
+    idct(dct_recon);
+
+    for( int m=0; m<8; m++ ){
+        for( int n=0; n<8; n++ ){
+            if(dct_recon[m][n]<0) dct_recon[m][n] = 0;
+            else if(dct_recon[m][n]>255) dct_recon[m][n] = 255;
+        }
+    }
+
+    picC->setBlock(dct_recon,mb_row,mb_column,i);
+}
+
+int MPEG1::predictive_block_P_decode(int i){
+    int right_for;
+    int down_for;
+    int right_half_for;
+    int down_half_for;
+    if(i<4){
+        right_for = recon_right_for>>1;
+        down_for = recon_down_for>>1;
+        right_half_for = recon_right_for-2*right_for;
+        down_half_for = recon_down_for-2*down_for;
+    }else{
+        right_for = (recon_right_for/2)>>1;
+        down_for = (recon_down_for/2)>>1;
+        right_half_for = recon_right_for/2-2*right_for;
+        down_half_for = recon_down_for/2-2*down_for;
+    }
+	fprintf(stderr, "right_for=%d\n", right_for);
+    if(right_half_for){
+        if(down_half_for){
+            picL->getBlock(pel,mb_row,mb_column,down_for,right_for,i,9,9);
+            MN64(pel) = (pel[m][n]+pel[m+1][n]+pel[m][n+1]+pel[m+1][n+1])/4;
+        }else{
+            picL->getBlock(pel,mb_row,mb_column,down_for,right_for,i,8,9);
+            MN64(pel) = (pel[m][n]+pel[m][n+1])/2;
+        }
+    }else{
+        if(down_half_for){
+            picL->getBlock(pel,mb_row,mb_column,down_for,right_for,i,9,8);
+            MN64(pel) = (pel[m+1][n]+pel[m][n])/2;
+        }else{
+            picL->getBlock(pel,mb_row,mb_column,down_for,right_for,i,8,8);
+        }
+    }
+
+    for( int m=0; m<8; m++ ){
+        for( int n=0; n<8; n++ ){
+            if(dct_zz[scan[m][n]]==0){
+                dct_recon[m][n] = 0;
+            }else{
+                dct_recon[m][n] = ((2*dct_zz[scan[m][n]]+SIGN(dct_zz[scan[m][n]]))*
+                        quantizer_scale*non_intra_quant[m][n])/16;
+                if((dct_recon[m][n]&1)==0){
+                    dct_recon[m][n] = dct_recon[m][n]-SIGN(dct_recon[m][n]);
+                }
+                if(dct_recon[m][n]>2047) dct_recon[m][n] = 2047;
+                else if(dct_recon[m][n]<-2048) dct_recon[m][n] = -2048;
+            }
+        }
+    }
+    idct(dct_recon);
+    for( int m=0; m<8; m++ ){
+        for( int n=0; n<8; n++ ){
+            dct_recon[m][n] += pel[m][n];
+            if(dct_recon[m][n]<0) dct_recon[m][n] = 0;
+            else if(dct_recon[m][n]>255) dct_recon[m][n] = 255;
+        }
+    }
+    picC->setBlock(dct_recon,mb_row,mb_column,i);
+}
+
+int flag=0;
+int MPEG1::macroblock_skipped_P(){
+    for( int i=0; i<6; i++ ){
+        picL->getBlock(pel,mb_row,mb_column,0,0,i,8,8);
+        MN64(dct_recon) = pel[m][n];
+        picC->setBlock(dct_recon,mb_row,mb_column,i);
+    }
+}
+
+int MPEG1::predictive_block_B_decode(int i){
+    int right_for;
+    int down_for;
+    int right_half_for;
+    int down_half_for;
+    int right_back;
+    int down_back;
+    int right_half_back;
+    int down_half_back;
+    if(i<4){
+        right_for = recon_right_for>>1;
+        down_for = recon_down_for>>1;
+        right_half_for = recon_right_for-2*right_for;
+        down_half_for = recon_down_for-2*down_for;
+        right_back = recon_right_back>>1;
+        down_back = recon_down_back>>1;
+        right_half_back = recon_right_back-2*right_back;
+        down_half_back = recon_down_back-2*down_back;
+    }else{
+        right_for = (recon_right_for/2)>>1;
+        down_for = (recon_down_for/2)>>1;
+        right_half_for = recon_right_for/2-2*right_for;
+        down_half_for = recon_down_for/2-2*down_for;
+        right_back = (recon_right_back/2)>>1;
+        down_back = (recon_down_back/2)>>1;
+        right_half_back = recon_right_back/2-2*right_back;
+        down_half_back = recon_down_back/2-2*down_back;
+    }
+    if(macroblock_motion_forward){
+        if(right_half_for){
+            if(down_half_for){
+                picL->getBlock(pel,mb_row,mb_column,down_for,right_for,i,9,9);
+                MN64(pel) = (pel[m][n]+pel[m+1][n]+pel[m][n+1]+pel[m+1][n+1])/4;
+            }else{
+                picL->getBlock(pel,mb_row,mb_column,down_for,right_for,i,8,9);
+                MN64(pel) = (pel[m][n]+pel[m][n+1])/2;
+            }
+        }else{
+            if(down_half_for){
+                picL->getBlock(pel,mb_row,mb_column,down_for,right_for,i,9,8);
+                MN64(pel) = (pel[m+1][n]+pel[m][n])/2;
+            }else{
+                picL->getBlock(pel,mb_row,mb_column,down_for,right_for,i,8,8);
+            }
+        }
+        if(macroblock_motion_backward){
+            if(right_half_back){
+                if(down_half_back){
+                    picR->getBlock(pel_past,mb_row,mb_column,down_back,right_back,i,9,9);
+                    MN64(pel) = (pel[m][n]+(pel_past[m][n]+pel_past[m+1][n]+pel_past[m][n+1]+pel_past[m+1][n+1])/4)/2;
+                }else{
+                    picR->getBlock(pel_past,mb_row,mb_column,down_back,right_back,i,8,9);
+                    MN64(pel) = (pel[m][n]+(pel_past[m][n]+pel_past[m][n+1])/2)/2;
+                }
+            }else{
+                if(down_half_back){
+                    picR->getBlock(pel_past,mb_row,mb_column,down_back,right_back,i,9,8);
+                    MN64(pel) = (pel[m][n]+(pel_past[m+1][n]+pel_past[m][n])/2)/2;
+                }else{
+                    picR->getBlock(pel_past,mb_row,mb_column,down_back,right_back,i,8,8);
+                    MN64(pel) = (pel[m][n]+pel_past[m][n])/2;
+                }
+            }
+        }
+    }else{
+        if(macroblock_motion_backward){
+            if(right_half_back){
+                if(down_half_back){
+                    picR->getBlock(pel,mb_row,mb_column,down_back,right_back,i,9,9);
+                    MN64(pel) = (pel[m][n]+pel[m+1][n]+pel[m][n+1]+pel[m+1][n+1])/4;
+                }else{
+                    picR->getBlock(pel,mb_row,mb_column,down_back,right_back,i,8,9);
+                    MN64(pel) = (pel[m][n]+pel[m][n+1])/2;
+                }
+            }else{
+                if(down_half_back){
+                    picR->getBlock(pel,mb_row,mb_column,down_back,right_back,i,9,8);
+                    MN64(pel) = (pel[m+1][n]+pel[m][n])/2;
+                }else{
+                    picR->getBlock(pel,mb_row,mb_column,down_back,right_back,i,8,8);
+                }
+            }
+        }
+    }
+    for( int m=0; m<8; m++ ){
+        for( int n=0; n<8; n++ ){
+            if(dct_zz[scan[m][n]]==0){
+                dct_recon[m][n] = 0;
+            }else{
+                dct_recon[m][n] = ((2*dct_zz[scan[m][n]]+SIGN(dct_zz[scan[m][n]]))*
+                        quantizer_scale*non_intra_quant[m][n])/16;
+                if((dct_recon[m][n]&1)==0){
+                    dct_recon[m][n] = dct_recon[m][n]-SIGN(dct_recon[m][n]);
+                }
+                if(dct_recon[m][n]>2047) dct_recon[m][n] = 2047;
+                else if(dct_recon[m][n]<-2048) dct_recon[m][n] = -2048;
+            }
+        }
+    }
+    idct(dct_recon);
+    for( int m=0; m<8; m++ ){
+        for( int n=0; n<8; n++ ){
+            dct_recon[m][n] += pel[m][n];
+            if(dct_recon[m][n]<0) dct_recon[m][n] = 0;
+            else if(dct_recon[m][n]>255) dct_recon[m][n] = 255;
+        }
+    }
+    picC->setBlock(dct_recon,mb_row,mb_column,i);
+}
+
+int MPEG1::macroblock_skipped_B(){
+    flag=1;
+    for( int i=0; i<6; i++ ){
+        predictive_block_B_decode(i);
+    }
+}
+

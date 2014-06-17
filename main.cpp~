@@ -121,14 +121,7 @@ class MpegDecoder{
 			// initialize an image frame
 			mb_width = (horizontal_size + 15)/16;
 			mb_height = (vertical_size + 15)/16;
-/*
-			pel = new Pixel*[vertical_size];
-			for(int i = 0; i < vertical_size; i++) pel[i] = new Pixel[horizontal_size];
-			pel_past = new Pixel*[vertical_size];
-			for(int i = 0; i < vertical_size; i++) pel_past[i] = new Pixel[horizontal_size];
-			pel_future = new Pixel*[vertical_size];
-			for(int i = 0; i < vertical_size; i++) pel_future[i] = new Pixel[horizontal_size];
-*/
+			
 			pel_y = new int*[mb_height*16];
 			for(int i = 0; i < mb_height*16; i++) pel_y[i] = new int[mb_width*16];
 			pel_cb = new int*[mb_height*8];
@@ -371,29 +364,32 @@ class MpegDecoder{
 			}
 
 			dumpBmp(temporal_order);
+			dumpBmp(temporal_order, true);
 
 			// buffer for non intra frame
-			for(int i = 0; i < mb_height*16; i++){
-				memcpy(pel_future_y[i], pel_y[i], sizeof(int)*mb_width*16);
-			}
-			for(int i = 0; i < mb_height*8; i++){
-				memcpy(pel_future_cb[i], pel_cb[i], sizeof(int)*mb_width*8);
-				memcpy(pel_future_cr[i], pel_cr[i], sizeof(int)*mb_width*8);
+			if(picture_coding_type != 3){
+				for(int i = 0; i < mb_height*16; i++){
+					memcpy(pel_future_y[i], pel_y[i], sizeof(int)*mb_width*16);
+				}
+				for(int i = 0; i < mb_height*8; i++){
+					memcpy(pel_future_cb[i], pel_cb[i], sizeof(int)*mb_width*8);
+					memcpy(pel_future_cr[i], pel_cr[i], sizeof(int)*mb_width*8);
+				}
 			}
 
 			fprintf(stderr, "read_picture_start()... done.\n");
 //			if(temporal_order==20)exit(0);
 			return;
 		}
-		void dumpBmp(int temporal_order){
+		void dumpBmp(int temporal_order, bool test = false){
 			// make R, G, B
 			int r[vertical_size][horizontal_size];
 			int g[vertical_size][horizontal_size];
 			int b[vertical_size][horizontal_size];
 			for(int i = 0; i < vertical_size; i++) for(int j = 0; j < horizontal_size; j++){
-				int pel_y = this->pel_y[i][j];
-				int pel_cb = this->pel_cb[i/2][j/2];
-				int pel_cr = this->pel_cr[i/2][j/2];
+				int pel_y = test? this->pel_future_y[i][j]: this->pel_y[i][j];
+				int pel_cb = test? this->pel_future_cb[i/2][j/2]: this->pel_cb[i/2][j/2];
+				int pel_cr = test? this->pel_future_cr[i/2][j/2]: this->pel_cr[i/2][j/2];
 
 				int pel_r = (int)round(1.16438356164*(pel_y - 16.0) + 1.59602678571*(pel_cr - 128.0));
 				int pel_g = (int)round(1.16438356164*(pel_y - 16.0) - 0.39176229009*(pel_cb - 128.0) - 0.81296764723*(pel_cr - 128.0));
@@ -412,7 +408,7 @@ class MpegDecoder{
 			}
 			// generate bmp file.
 			char bmppath[1024];
-			sprintf(bmppath, "%s/%d.bmp", dir_name, temporal_order);
+			sprintf(bmppath, test?"%s/%d_f.bmp":"%s/%d.bmp", dir_name, temporal_order);
 			bmpMaker.make(bmppath, &r[0][0], &g[0][0], &b[0][0], horizontal_size, vertical_size);
 			return;
 		}
@@ -730,7 +726,6 @@ class MpegDecoder{
 					read_motion_vector(motion_vertical_forward_code, forward_f, motion_vertical_forward_r, forward_r_size, full_pel_forward_vector, recon_down_for, recon_down_for_prev);
 				}
 				else{
-					// TODO
 					if(picture_coding_type == 2){
 						recon_right_for = 0;
 						recon_down_for = 0;
@@ -740,7 +735,7 @@ class MpegDecoder{
 						recon_down_for = macroblock_intra? 0: recon_down_for_prev;
 					}
 				}
-				if(!skipped_macroblock && !macroblock_intra)fprintf(stderr, "read_macroblock(): forward motion vector=(%d,%d)\n", recon_right_for, recon_down_for);
+				if(!skipped_macroblock && (!macroblock_intra || (picture_coding_type == 3 && macroblock_motion_forward)))fprintf(stderr, "read_macroblock(): forward motion vector=(%d,%d)\n", recon_right_for, recon_down_for);
 
 				// motion_backward
 				if(!skipped_macroblock && macroblock_motion_backward){
@@ -751,7 +746,6 @@ class MpegDecoder{
 					read_motion_vector(motion_vertical_backward_code, backward_f, motion_vertical_backward_r, backward_r_size, full_pel_backward_vector, recon_down_back, recon_down_back_prev);
 				}
 				else{
-					// TODO
 					if(picture_coding_type == 2){
 						recon_right_back = 0;
 						recon_down_back = 0;
@@ -761,7 +755,7 @@ class MpegDecoder{
 						recon_down_back = macroblock_intra? 0: recon_down_back_prev;
 					}
 				}
-				if(!skipped_macroblock && !macroblock_intra && picture_coding_type == 3)fprintf(stderr, "read_macroblock(): backward motion vector=(%d,%d)\n", recon_right_back, recon_down_back);
+				if(!skipped_macroblock && (!macroblock_intra || (picture_coding_type == 3 && macroblock_motion_backward)))fprintf(stderr, "read_macroblock(): backward motion vector=(%d,%d)\n", recon_right_back, recon_down_back);
 
 				// pattern
 				if(!skipped_macroblock){
@@ -800,7 +794,8 @@ class MpegDecoder{
 					if(!skipped_macroblock && pattern_code[i]){
 						read_block(i);
 					}
-					if(macroblock_intra){
+
+					if(!skipped_macroblock && macroblock_intra){
 						intra_block_decode(i);
 					}
 					else{
@@ -1258,7 +1253,7 @@ class MpegDecoder{
 				}
 				if(macroblock_motion_forward && macroblock_motion_backward){
 					ref_by_motion_vector(i, recon_right_for, recon_down_for, pel_past_y, pel_past_cb, pel_past_cr, false);
-					ref_by_motion_vector(i, recon_right_back, recon_down_back, pel_past_y, pel_past_cb, pel_past_cr, true);
+					ref_by_motion_vector(i, recon_right_back, recon_down_back, pel_future_y, pel_future_cb, pel_future_cr, true);
 				}
 			}
 
@@ -1298,24 +1293,24 @@ class MpegDecoder{
 					case 0: case 1: case 2: case 3:
 						y = mb_row*16 + (int)(i/2)*8 + m;
 						x = mb_column*16 + (i%2)*8 + n;
-						if(y >= mb_height*16 || x >= mb_width*16) continue;
-						pel_y[y][x] += dct_recon[m][n];
+						//pel_y[y][x] = 0;
+						//pel_y[y][x] += dct_recon[m][n];
 						if(pel_y[y][x] > 255) pel_y[y][x] = 255;
 						if(pel_y[y][x] < 0) pel_y[y][x] = 0;
 						break;
 					case 4:
 						y = mb_row*8 + m;
 						x = mb_column*8 + n;
-						if(y >= mb_height*8 || x >= mb_width*8) continue;
-						pel_cb[y][x] += dct_recon[m][n];
+						//pel_cb[y][x] = 0;
+						//pel_cb[y][x] += dct_recon[m][n];
 						if(pel_cb[y][x] > 255) pel_cb[y][x] = 255;
 						if(pel_cb[y][x] < 0) pel_cb[y][x] = 0;
 						break;
 					case 5:
 						y = mb_row*8 + m;
 						x = mb_column*8 + n;
-						if(y >= mb_height*8 || x >= mb_width*8) continue;
-						pel_cr[y][x] += dct_recon[m][n];
+						//pel_cr[y][x] = 0;
+						//pel_cr[y][x] += dct_recon[m][n];
 						if(pel_cr[y][x] > 255) pel_cr[y][x] = 255;
 						if(pel_cr[y][x] < 0) pel_cr[y][x] = 0;
 						break;
@@ -1327,7 +1322,7 @@ class MpegDecoder{
 			return;
 		}
 		void ref_by_motion_vector(int i, int &recon_right, int &recon_down, int **&pel_ref_y, int **&pel_ref_cb, int **&pel_ref_cr, bool isAvg){
-//			fprintf(stderr, "ref_by_motion_vector(): i=%d, recon_right=%d, recon_down=%d, isAvg=%d\n", i, recon_right, recon_down, isAvg);
+			fprintf(stderr, "ref_by_motion_vector(): i=%d, recon_right=%d, recon_down=%d, isAvg=%d\n", i, recon_right, recon_down, isAvg);
 			int right, down;
 			int right_half, down_half;
 			int y, x;
@@ -1346,9 +1341,9 @@ class MpegDecoder{
 					down_half = (recon_down/2)&1;
 					break;
 			}
-			switch(i){
-				case 0: case 1: case 2: case 3:
-					for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
+			for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
+				switch(i){
+					case 0: case 1: case 2: case 3:
 						y = mb_row*16 + (int)(i/2)*8 + m;
 						x = mb_column*16 + (i%2)*8 + n;
 						tmp = pel_ref_y[y + down][x + right];
@@ -1356,12 +1351,9 @@ class MpegDecoder{
 						if(down_half) tmp += pel_ref_y[y + down + 1][x + right];
 						if(right_half && down_half) tmp += pel_ref_y[y + down + 1][x + right + 1];
 						tmp /= (right_half? 2: 1)*(down_half? 2: 1);
-
 						pel_y[y][x] = isAvg? (pel_y[y][x] + tmp)/2: tmp;
-					}
-					break;
-				case 4:
-					for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
+						break;
+					case 4:
 						y = mb_row*8 + m;
 						x = mb_column*8 + n;
 						tmp = pel_ref_cb[y + down][x + right];
@@ -1369,12 +1361,9 @@ class MpegDecoder{
 						if(down_half) tmp += pel_ref_cb[y + down + 1][x + right];
 						if(right_half && down_half) tmp += pel_ref_cb[y + down + 1][x + right + 1];
 						tmp /= (right_half? 2: 1)*(down_half? 2: 1);
-
 						pel_cb[y][x] = isAvg? (pel_cb[y][x] + tmp)/2: tmp;
-					}
-					break;
-				case 5:
-					for(int m = 0; m < 16; m++) for(int n = 0; n < 16; n++){
+						break;
+					case 5:
 						y = mb_row*8 + m;
 						x = mb_column*8 + n;
 						tmp = pel_ref_cr[y + down][x + right];
@@ -1382,13 +1371,12 @@ class MpegDecoder{
 						if(down_half) tmp += pel_ref_cr[y + down + 1][x + right];
 						if(right_half && down_half) tmp += pel_ref_cr[y + down + 1][x + right + 1];
 						tmp /= (right_half? 2: 1)*(down_half? 2: 1);
-
 						pel_cr[y][x] = isAvg? (pel_cr[y][x] + tmp)/2: tmp;
-					}
-					break;
-				default:
-					EXIT("read_block(): error. //output");
-					break;
+						break;
+					default:
+						EXIT("read_block(): error. //output");
+						break;
+				}
 			}
 			return;
 		}

@@ -1,0 +1,74 @@
+#include "huffman.h"
+#include <stdio.h>
+#include <string.h>
+#include <algorithm>
+#include <vector>
+
+using namespace std;
+
+void HTABLE::load(const char *filename){
+	fprintf(stderr, "%s\n", filename);
+    int n,symbol;
+    FILE* ft = fopen(filename,"r");
+
+    char code[20];
+    rs.push_back(new int[256]);
+
+    rl.push_back(new char[256]);
+
+    memset(rs[0],0,256);
+    memset(rl[0],0,256);
+
+    fscanf(ft,"%d",&n);
+
+
+    for( int i=0; i<n; i++ ){
+        fscanf(ft,"%s %d",code,&symbol);
+        int l = strlen(code);
+        if(l<=8){
+            int x=0,L,R;
+            for( int j=0; j<l; j++ ){
+                x=(x<<1)|(code[j]-'0');
+            }
+            L = x<<(8-l);
+            R = (x+1)<<(8-l);
+            for( int j=L; j<R; j++ ){
+                rs[0][j] = symbol;
+                rl[0][j] = l;
+            }
+        }else{
+            int x=0,L,R;
+            for( int j=0; j<8; j++ ){
+                x=(x<<1)|(code[j]-'0');
+            }
+            if(rl[0][x]==0){
+                rl[0][x] = -rs.size();
+                rs.push_back(new int[256]);
+                rl.push_back(new char[256]);
+                memset(rs[-rl[0][x]],0,256);
+                memset(rl[-rl[0][x]],0,256);
+            }
+            int p=-rl[0][x];
+            x = 0;
+            for( int j=8; j<l; j++ ){
+                x=(x<<1)|(code[j]-'0');
+            }
+            L = x<<(16-l);
+            R = (x+1)<<(16-l);
+            for( int j=L; j<R; j++ ){
+                rs[p][j] = symbol;
+                rl[p][j] = l-8;
+            }
+        }
+    }
+    fclose(ft);
+}
+
+HTABLE::~HTABLE(){
+    for( int i=0; i<rs.size(); i++ ){
+        delete[] rs[i];
+        delete[] rl[i];
+    }
+    rs.clear();
+    rl.clear();
+}
