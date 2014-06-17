@@ -109,7 +109,7 @@ class Huffman{
 			return codelen[i];
 		}
 		void set_codeword(unsigned char symbol, const char *codeword_str){
-			fprintf(stderr, "Huffman.set_codeword(): symbol=%02X, codeword_str=%s\n", symbol, codeword_str);
+			//fprintf(stderr, "Huffman.set_codeword(): symbol=%02X, codeword_str=%s\n", symbol, codeword_str);
 			// parse codeword_str
 			int codelen = strlen(codeword_str);
 			if(codelen > maxLen){
