@@ -10,14 +10,17 @@ class FileWriter{
 		FILE *file;
 	public:
 		FileWriter(){}
-		FileWriter(const char *filename){
-			set_filename(filename);
+		FileWriter(const char *filepath){
+			set_filepath(filepath);
 		}
-		void set_filename(const char *filename){
+		void set_filepath(const char *filepath){
 			if(file) fclose(file);
-			file = fopen(filename, "wb");
+			file = fopen(filepath, "wb");
 			nBits = 0;
-			if(!file) EXIT("FileWriter.set_filename(): error.");
+			if(!file){
+				fprintf(stderr, "%s\n", filepath);
+				EXIT("FileWriter.set_filename(): error.");
+			}
 		}
 		int nBits;
 		#define LITTLEENDIAN 0

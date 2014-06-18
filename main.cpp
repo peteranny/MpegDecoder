@@ -24,7 +24,7 @@ class MpegDecoder{
 		BmpMaker bmpMaker;
 		const char *dir_name;
 	public:
-		MpegDecoder(const char *mpeg_name, const char *dir_name = "test"){
+		MpegDecoder(const char *mpeg_name, const char *dir_name){
 			mpegFile.set_filename(mpeg_name);
 			this->dir_name = dir_name;
 			mkdir(dir_name, S_IRWXU|S_IRWXG|S_IROTH|S_IXOTH);
@@ -108,7 +108,7 @@ class MpegDecoder{
 		int non_intra_quantizer_matrix[8][8];
 	public:
 		void read_sequence_header(){
-			fprintf(stderr, "read_sequence_start()...\n");
+			//fprintf(stderr, "read_sequence_start()...\n");
 
 			sequence_header_code = mpegFile.read_bits_as_num(4*8);
 			if(sequence_header_code != SEQUENCE_HEADER_CODE){
@@ -268,7 +268,7 @@ class MpegDecoder{
 			}
 			temporal_reference_accu += numPictures;
 
-			fprintf(stderr, "read_sequence_start()... done.\n");
+			//fprintf(stderr, "read_sequence_start()... done.\n");
 			return;
 		}
 	private:
@@ -289,7 +289,7 @@ class MpegDecoder{
 		int extra_information_picture;
 	public:
 		void read_picture_start(){
-			fprintf(stderr, "read_picture_start()...\n");
+			//fprintf(stderr, "read_picture_start()...\n");
 
 			picture_start_code = mpegFile.read_bits_as_num(4*8);
 			if(picture_start_code != PICTURE_START_CODE){
@@ -297,47 +297,47 @@ class MpegDecoder{
 			}
 
 			temporal_reference = mpegFile.read_bits_as_num(10);
-			fprintf(stderr, "read_picture_start(): temporal_reference=%d\n", temporal_reference);
+			//fprintf(stderr, "read_picture_start(): temporal_reference=%d\n", temporal_reference);
 			int temporal_order = temporal_reference_accu + temporal_reference;
 			fprintf(stderr, "read_picture_start(): picture %d\n", temporal_order);
 			static int count = 0;
-			fprintf(stderr, "read_picture_start(): decode order %d\n", count++);
+			//fprintf(stderr, "read_picture_start(): decode order %d\n", count++);
 
 			picture_coding_type = mpegFile.read_bits_as_num(3);
-			fprintf(stderr, "read_picture_start(): picture_coding_type=%d\n", picture_coding_type);
+			//fprintf(stderr, "read_picture_start(): picture_coding_type=%d\n", picture_coding_type);
 
 			vbv_delay = mpegFile.read_bits_as_num(16);
-			fprintf(stderr, "read_picture_start(): vbv_delay=%d\n", vbv_delay);
+			//fprintf(stderr, "read_picture_start(): vbv_delay=%d\n", vbv_delay);
 			// UNDONE
 			
 			if(picture_coding_type == 2 || picture_coding_type == 3){
 				full_pel_forward_vector = mpegFile.read_bits_as_num(1);
-				fprintf(stderr, "read_picture_start(): full_pel_forward_vector=%d\n", full_pel_forward_vector);
+				//fprintf(stderr, "read_picture_start(): full_pel_forward_vector=%d\n", full_pel_forward_vector);
 				forward_f_code = mpegFile.read_bits_as_num(3);
-				fprintf(stderr, "read_picture_start(): forward_f_code=%d\n", forward_f_code);
+				//fprintf(stderr, "read_picture_start(): forward_f_code=%d\n", forward_f_code);
 				forward_r_size = forward_f_code - 1;
 				forward_f = 1 << forward_r_size;
 			}
 
 			if(picture_coding_type == 3){
 				full_pel_backward_vector = mpegFile.read_bits_as_num(1);
-				fprintf(stderr, "read_picture_start(): full_pel_backward_vector=%d\n", full_pel_backward_vector);
+				//fprintf(stderr, "read_picture_start(): full_pel_backward_vector=%d\n", full_pel_backward_vector);
 				backward_f_code = mpegFile.read_bits_as_num(3);
-				fprintf(stderr, "read_picture_start(): backward_f_code=%d\n", backward_f_code);
+				//fprintf(stderr, "read_picture_start(): backward_f_code=%d\n", backward_f_code);
 				backward_r_size = backward_f_code - 1;
 				backward_f = 1 << backward_r_size;
 			}
 
 			while(nextbits(1) == 1){ // b1
 				extra_bit_picture = mpegFile.read_bits_as_num(1);
-				fprintf(stderr, "read_picture_start(): extra_bit_picture=%d\n", extra_bit_picture);
+				//fprintf(stderr, "read_picture_start(): extra_bit_picture=%d\n", extra_bit_picture);
 				// UNDONE
 				
 				extra_information_picture = mpegFile.read_bits_as_num(8);
 				// UNDONE
 			}
 			extra_bit_picture = mpegFile.read_bits_as_num(1);
-			fprintf(stderr, "read_picture_start(): extra_bit_picture=%d\n", extra_bit_picture);
+			//fprintf(stderr, "read_picture_start(): extra_bit_picture=%d\n", extra_bit_picture);
 
 			next_start_code();
 
@@ -364,7 +364,6 @@ class MpegDecoder{
 			}
 
 			dumpBmp(temporal_order);
-			dumpBmp(temporal_order, true);
 
 			// buffer for non intra frame
 			if(picture_coding_type != 3){
@@ -377,7 +376,7 @@ class MpegDecoder{
 				}
 			}
 
-			fprintf(stderr, "read_picture_start()... done.\n");
+			//fprintf(stderr, "read_picture_start()... done.\n");
 //			if(temporal_order==20)exit(0);
 			return;
 		}
@@ -420,7 +419,7 @@ class MpegDecoder{
 		int extra_information_slice;
 	public:
 		void read_slice_start(){
-			fprintf(stderr, "read_slice_start()...\n");
+			//fprintf(stderr, "read_slice_start()...\n");
 
 			slice_start_code = mpegFile.read_bits_as_num(4*8);
 			if(!SLICE_START_CODE(slice_start_code)){
@@ -428,10 +427,10 @@ class MpegDecoder{
 			}
 
 			slice_vertical_position = slice_start_code&0x000000FF;
-			fprintf(stderr, "read_slice_start(): slice_start_code=%d (slice_vertical_position=%d)\n", slice_start_code, slice_vertical_position);
+			//fprintf(stderr, "read_slice_start(): slice_start_code=%d (slice_vertical_position=%d)\n", slice_start_code, slice_vertical_position);
 
 			quantizer_scale = mpegFile.read_bits_as_num(5);
-			fprintf(stderr, "read_slice_start(): quantizer_scale=%d\n", quantizer_scale);
+			//fprintf(stderr, "read_slice_start(): quantizer_scale=%d\n", quantizer_scale);
 
 			// initailize
 			previous_macroblock_address = (slice_vertical_position - 1)*mb_width - 1;
@@ -446,12 +445,12 @@ class MpegDecoder{
 
 			while(nextbits(1) == 1){ // b1
 				extra_bit_slice = mpegFile.read_bits_as_num(1);
-				fprintf(stderr, "read_slice_start(): extra_bit_slice=%d\n", extra_bit_slice);
+				//fprintf(stderr, "read_slice_start(): extra_bit_slice=%d\n", extra_bit_slice);
 				extra_information_slice = mpegFile.read_bits_as_num(8);
 				// UNDONE
 			}
 			extra_bit_slice = mpegFile.read_bits_as_num(1);
-			fprintf(stderr, "read_slice_start(): extra_bit_slice=%d\n", extra_bit_slice);
+			//fprintf(stderr, "read_slice_start(): extra_bit_slice=%d\n", extra_bit_slice);
 
 			while(nextbits(23) != 0){ // b00000000000000000000000
 				read_macroblock();
@@ -459,7 +458,7 @@ class MpegDecoder{
 
 			next_start_code();
 
-			fprintf(stderr, "read_slice_start()... done.\n");
+			//fprintf(stderr, "read_slice_start()... done.\n");
 			return;
 		}
 	private:
@@ -505,7 +504,7 @@ class MpegDecoder{
 		int coded_block_pattern;
 	public:
 		void read_macroblock(){
-			fprintf(stderr, "read_macroblock()...\n");
+			//fprintf(stderr, "read_macroblock()...\n");
 
 			// macroblock_address_increment
 			int macroblock_address_increment_accu = 0;
@@ -513,16 +512,16 @@ class MpegDecoder{
 				#include "macroblock_address_increment_huff.h"
 				macroblock_address_increment = huffman_decode(macroblock_address_increment_huff);
 				if(macroblock_address_increment == 0x00){
-					fprintf(stderr, "read_macroblock(): macroblock_address_increment=stuffing\n");
+					//fprintf(stderr, "read_macroblock(): macroblock_address_increment=stuffing\n");
 					continue;
 				}
 				else if(macroblock_address_increment == 0xFF){
-					fprintf(stderr, "read_macroblock(): macroblock_address_increment=escape\n");
+					//fprintf(stderr, "read_macroblock(): macroblock_address_increment=escape\n");
 					macroblock_address_increment_accu += 33;
 					continue;
 				}
 				else{
-					fprintf(stderr, "read_macroblock(): macroblock_address_increment=%d\n", macroblock_address_increment);
+					//fprintf(stderr, "read_macroblock(): macroblock_address_increment=%d\n", macroblock_address_increment);
 					macroblock_address_increment_accu += macroblock_address_increment;
 					break;
 				}
@@ -530,7 +529,7 @@ class MpegDecoder{
 
 			for(int j = 0; j < macroblock_address_increment_accu; j++){
 				macroblock_address = previous_macroblock_address + 1;
-				fprintf(stderr, "read_macroblock(): macroblock_address=%d\n", macroblock_address);
+				//fprintf(stderr, "read_macroblock(): macroblock_address=%d\n", macroblock_address);
 				mb_row = macroblock_address/mb_width;
 				mb_column = macroblock_address%mb_width;
 
@@ -541,7 +540,7 @@ class MpegDecoder{
 						case 1: // intra-coded (I)
 							#include "macroblock_type_I_huff.h"
 							macroblock_type = huffman_decode(macroblock_type_I_huff);
-							fprintf(stderr, "read_macroblock(): macroblock_type=");macroblock_type_I_huff->print_codeword(macroblock_type);fprintf(stderr, "\n");
+							//fprintf(stderr, "read_macroblock(): macroblock_type=");macroblock_type_I_huff->print_codeword(macroblock_type);fprintf(stderr, "\n");
 							switch(macroblock_type){
 								case 1: // 1
 									macroblock_quant = 0;
@@ -564,7 +563,7 @@ class MpegDecoder{
 						case 2: // predictive-coded (P)
 							#include "macroblock_type_P_huff.h"
 							macroblock_type = huffman_decode(macroblock_type_P_huff);
-							fprintf(stderr, "read_macroblock(): macroblock_type=");macroblock_type_P_huff->print_codeword(macroblock_type);fprintf(stderr, "\n");
+							//fprintf(stderr, "read_macroblock(): macroblock_type=");macroblock_type_P_huff->print_codeword(macroblock_type);fprintf(stderr, "\n");
 							switch(macroblock_type){
 								case 1: // 1
 									macroblock_quant = 0;
@@ -620,7 +619,7 @@ class MpegDecoder{
 						case 3: // bidirectionally predictive-coded (B)
 							#include "macroblock_type_B_huff.h"
 							macroblock_type = huffman_decode(macroblock_type_B_huff);
-							fprintf(stderr, "read_macroblock(): macroblock_type=");macroblock_type_B_huff->print_codeword(macroblock_type);fprintf(stderr, "\n");
+							//fprintf(stderr, "read_macroblock(): macroblock_type=");macroblock_type_B_huff->print_codeword(macroblock_type);fprintf(stderr, "\n");
 							switch(macroblock_type){
 								case 1: // 10
 									macroblock_quant = 0;
@@ -705,24 +704,24 @@ class MpegDecoder{
 							EXIT("MpegDecoder.read_macroblock(): error. // macroblock_type");
 							break;
 					}
-					fprintf(stderr, "read_macroblock(); macroblock_quant=%d\n", macroblock_quant);
-					fprintf(stderr, "read_macroblock(); macroblock_motion_forward=%d\n", macroblock_motion_forward);
-					fprintf(stderr, "read_macroblock(); macroblock_motion_backward=%d\n", macroblock_motion_backward);
-					fprintf(stderr, "read_macroblock(); macroblock_pattern=%d\n", macroblock_pattern);
-					fprintf(stderr, "read_macroblock(); macroblock_intra=%d\n", macroblock_intra);
+					//fprintf(stderr, "read_macroblock(); macroblock_quant=%d\n", macroblock_quant);
+					//fprintf(stderr, "read_macroblock(); macroblock_motion_forward=%d\n", macroblock_motion_forward);
+					//fprintf(stderr, "read_macroblock(); macroblock_motion_backward=%d\n", macroblock_motion_backward);
+					//fprintf(stderr, "read_macroblock(); macroblock_pattern=%d\n", macroblock_pattern);
+					//fprintf(stderr, "read_macroblock(); macroblock_intra=%d\n", macroblock_intra);
 				}
 
 				if(!skipped_macroblock && macroblock_quant){
 					quantizer_scale = mpegFile.read_bits_as_num(5);
-					fprintf(stderr, "read_macroblock(): quantizer_scale=%d\n", quantizer_scale);
+					//fprintf(stderr, "read_macroblock(): quantizer_scale=%d\n", quantizer_scale);
 				}
 
 				// motion_forward
 				if(!skipped_macroblock && macroblock_motion_forward){
-					fprintf(stderr, "read_macroblock(): recon_right_for...\n");
+					//fprintf(stderr, "read_macroblock(): recon_right_for...\n");
 					read_motion_vector(motion_horizontal_forward_code, forward_f, motion_horizontal_forward_r, forward_r_size, full_pel_forward_vector, recon_right_for, recon_right_for_prev);
 
-					fprintf(stderr, "read_macroblock(): recon_down_for...\n");
+					//fprintf(stderr, "read_macroblock(): recon_down_for...\n");
 					read_motion_vector(motion_vertical_forward_code, forward_f, motion_vertical_forward_r, forward_r_size, full_pel_forward_vector, recon_down_for, recon_down_for_prev);
 				}
 				else{
@@ -735,14 +734,14 @@ class MpegDecoder{
 						recon_down_for = macroblock_intra? 0: recon_down_for_prev;
 					}
 				}
-				if(!skipped_macroblock && (!macroblock_intra || (picture_coding_type == 3 && macroblock_motion_forward)))fprintf(stderr, "read_macroblock(): forward motion vector=(%d,%d)\n", recon_right_for, recon_down_for);
+//				if(!skipped_macroblock && (!macroblock_intra || (picture_coding_type == 3 && macroblock_motion_forward)))fprintf(stderr, "read_macroblock(): forward motion vector=(%d,%d)\n", recon_right_for, recon_down_for);
 
 				// motion_backward
 				if(!skipped_macroblock && macroblock_motion_backward){
-					fprintf(stderr, "read_macroblock(): recon_right_back...\n");
+					//fprintf(stderr, "read_macroblock(): recon_right_back...\n");
 					read_motion_vector(motion_horizontal_backward_code, backward_f, motion_horizontal_backward_r, backward_r_size, full_pel_backward_vector, recon_right_back, recon_right_back_prev);
 
-					fprintf(stderr, "read_macroblock(): recon_down_back...\n");
+					//fprintf(stderr, "read_macroblock(): recon_down_back...\n");
 					read_motion_vector(motion_vertical_backward_code, backward_f, motion_vertical_backward_r, backward_r_size, full_pel_backward_vector, recon_down_back, recon_down_back_prev);
 				}
 				else{
@@ -755,14 +754,14 @@ class MpegDecoder{
 						recon_down_back = macroblock_intra? 0: recon_down_back_prev;
 					}
 				}
-				if(!skipped_macroblock && (!macroblock_intra || (picture_coding_type == 3 && macroblock_motion_backward)))fprintf(stderr, "read_macroblock(): backward motion vector=(%d,%d)\n", recon_right_back, recon_down_back);
+//				if(!skipped_macroblock && (!macroblock_intra || (picture_coding_type == 3 && macroblock_motion_backward)))fprintf(stderr, "read_macroblock(): backward motion vector=(%d,%d)\n", recon_right_back, recon_down_back);
 
 				// pattern
 				if(!skipped_macroblock){
 					if(macroblock_pattern){
 						#include "coded_block_pattern_huff.h"
 						coded_block_pattern = huffman_decode(coded_block_pattern_huff);
-						fprintf(stderr, "read_macroblock(): coded_block_pattern=%d\n", coded_block_pattern);
+						//fprintf(stderr, "read_macroblock(): coded_block_pattern=%d\n", coded_block_pattern);
 						int cbp = coded_block_pattern;
 						for(int i = 0; i < 6; i++){
 							pattern_code[i] = cbp & (1 << (5 - i));
@@ -799,6 +798,21 @@ class MpegDecoder{
 						intra_block_decode(i);
 					}
 					else{
+						if(picture_coding_type == 2){
+							ref_by_motion_vector(i, recon_right_for, recon_down_for, pel_past_y, pel_past_cb, pel_past_cr, false);
+						}
+						if(picture_coding_type == 3){
+							if(macroblock_motion_forward && !macroblock_motion_backward){
+								ref_by_motion_vector(i, recon_right_for, recon_down_for, pel_past_y, pel_past_cb, pel_past_cr, false);
+							}
+							if(!macroblock_motion_forward && macroblock_motion_backward){
+								ref_by_motion_vector(i, recon_right_back, recon_down_back, pel_future_y, pel_future_cb, pel_future_cr, false);
+							}
+							if(macroblock_motion_forward && macroblock_motion_backward){
+								ref_by_motion_vector(i, recon_right_for, recon_down_for, pel_past_y, pel_past_cb, pel_past_cr, false);
+								ref_by_motion_vector(i, recon_right_back, recon_down_back, pel_future_y, pel_future_cb, pel_future_cr, true);
+							}
+						}
 						non_intra_block_decode(i);
 					}
 				}
@@ -817,18 +831,18 @@ class MpegDecoder{
 				recon_down_back_prev = recon_down_back;
 			}
 
-			fprintf(stderr, "read_macroblock()... done.\n");
+			//fprintf(stderr, "read_macroblock()... done.\n");
 			return;
 		}
 		void read_motion_vector(int &motion_code, int &f, int &motion_r, int &r_size, int &full_pel_vector, int &recon, int &recon_prev){
 			#include "motion_code_huff.h"
 			motion_code = (int)((signed char)huffman_decode(motion_code_huff));
-			fprintf(stderr, "read_macroblock(): motion_code=%d\n", motion_code);
+			//fprintf(stderr, "read_macroblock(): motion_code=%d\n", motion_code);
 
 			int complement_r = 0;
 			if((f != 1) && (motion_code != 0)){
 				motion_r = mpegFile.read_bits_as_num(r_size);
-				fprintf(stderr, "read_macroblock(): motion_r=%d\n", motion_r);
+				//fprintf(stderr, "read_macroblock(): motion_r=%d\n", motion_r);
 				complement_r = f - 1 - motion_r;
 			}
 
@@ -978,7 +992,7 @@ class MpegDecoder{
 		int dct_dc_cr_past;
 	public:
 		void read_block(int i){
-			fprintf(stderr, "read_block(): block %d...\n", i);
+			//fprintf(stderr, "read_block(): block %d...\n", i);
 			// dct_coeff_first
 			if(macroblock_intra){
 				switch(i){
@@ -986,10 +1000,10 @@ class MpegDecoder{
 						// for block 0..3 (Y)
 						#include "dct_dc_size_luminance_huff.h"
 						dct_dc_size_luminance = huffman_decode(dct_dc_size_luminance_huff);
-						fprintf(stderr, "read_block(): dct_dc_size_luminance=%d\n", dct_dc_size_luminance);
+						//fprintf(stderr, "read_block(): dct_dc_size_luminance=%d\n", dct_dc_size_luminance);
 						if(dct_dc_size_luminance > 0){
 							dct_dc_differential = mpegFile.read_bits_as_num(dct_dc_size_luminance);
-							fprintf(stderr, "read_block(): dct_dc_differential=%d\n", dct_dc_differential);
+							//fprintf(stderr, "read_block(): dct_dc_differential=%d\n", dct_dc_differential);
 							dct_zz[dct_zz_i++] = (dct_dc_differential&(1 << (dct_dc_size_luminance - 1)))? dct_dc_differential: (-1 << dct_dc_size_luminance)|(dct_dc_differential + 1);
 							//(dct_dc_differential < pow(2, dct_dc_size_luminance - 1))? dct_dc_differential - (pow(2, dct_dc_size_luminance) - 1): dct_dc_differential;
 						}
@@ -1001,10 +1015,10 @@ class MpegDecoder{
 						// for block 4..5 (CbCr)
 						#include "dct_dc_size_chrominance_huff.h"
 						dct_dc_size_chrominance = huffman_decode(dct_dc_size_chrominance_huff);
-						fprintf(stderr, "read_block(): dct_dc_size_chrominance=%d\n", dct_dc_size_chrominance);
+						//fprintf(stderr, "read_block(): dct_dc_size_chrominance=%d\n", dct_dc_size_chrominance);
 						if(dct_dc_size_chrominance > 0){
 							dct_dc_differential = mpegFile.read_bits_as_num(dct_dc_size_chrominance);
-							fprintf(stderr, "read_block(): dct_dc_differential=%d\n", dct_dc_differential);
+							//fprintf(stderr, "read_block(): dct_dc_differential=%d\n", dct_dc_differential);
 							dct_zz[dct_zz_i++] = (dct_dc_differential&(1 << (dct_dc_size_chrominance - 1)))? dct_dc_differential: (-1 << dct_dc_size_chrominance)|(dct_dc_differential + 1);
 						}
 						else{
@@ -1024,8 +1038,8 @@ class MpegDecoder{
 				dct_coeff_symbol(0, 0, (unsigned char)dct_coeff_first, &run, &level);
 				// escape
 				if(run == 0xFF && level == 0xFF){
-					fprintf(stderr, "read_block(): dct_coeff_first=%02X, run=%d, level=%d\n", dct_coeff_first, run, level);
-					fprintf(stderr, "read_block(): escape.\n");
+					//fprintf(stderr, "read_block(): dct_coeff_first=%02X, run=%d, level=%d\n", dct_coeff_first, run, level);
+					//fprintf(stderr, "read_block(): escape.\n");
 					run = mpegFile.read_bits_as_num(6);
 					level = mpegFile.read_bits_as_num(8);
 					if(level == 0x80){ // b10000000...
@@ -1037,12 +1051,12 @@ class MpegDecoder{
 					else{
 						level = (level < 128)? level: level - 256;
 					}
-					fprintf(stderr, "read_block(): run=%d, level=%d\n", run, level);
+					//fprintf(stderr, "read_block(): run=%d, level=%d\n", run, level);
 				}
 				else{
 					int sign = mpegFile.read_bits_as_num(1);
 					level = sign? -level: level;
-					fprintf(stderr, "read_block(): dct_coeff_first=%02X, run=%d, level=%d\n", dct_coeff_first, run, level);
+					//fprintf(stderr, "read_block(): dct_coeff_first=%02X, run=%d, level=%d\n", dct_coeff_first, run, level);
 				}
 			}
 
@@ -1058,14 +1072,14 @@ class MpegDecoder{
 					dct_coeff_symbol(0, 0, (unsigned char)dct_coeff_next, &run, &level);
 					// end_of_block
 					if(run == 0x00 && level == 0x00){
-						fprintf(stderr, "read_block(): dct_coeff_next=%02X, run=%d, level=%d\n", dct_coeff_next, run, level);
-						fprintf(stderr, "read_block(): end_of_block.\n");
+						//fprintf(stderr, "read_block(): dct_coeff_next=%02X, run=%d, level=%d\n", dct_coeff_next, run, level);
+						//fprintf(stderr, "read_block(): end_of_block.\n");
 						break;
 					}
 					// escape
 					else if(run == 0xFF && level == 0xFF){
-						fprintf(stderr, "read_block(): dct_coeff_next=%02X, run=%d, level=%d\n", dct_coeff_next, run, level);
-						fprintf(stderr, "read_block(): escape.\n");
+						//fprintf(stderr, "read_block(): dct_coeff_next=%02X, run=%d, level=%d\n", dct_coeff_next, run, level);
+						//fprintf(stderr, "read_block(): escape.\n");
 						run = mpegFile.read_bits_as_num(6);
 						level = mpegFile.read_bits_as_num(8);
 						if(level == 0x80){ // b10000000...
@@ -1077,13 +1091,13 @@ class MpegDecoder{
 						else{
 							level = (level < 128)? level: level - 256;
 						}
-						fprintf(stderr, "read_block(): run=%d, level=%d\n", run, level);
+						//fprintf(stderr, "read_block(): run=%d, level=%d\n", run, level);
 					}
 					// get sign bit
 					else{
 						int sign = mpegFile.read_bits_as_num(1);
 						level = sign? -level: level;
-						fprintf(stderr, "read_block(): dct_coeff_next=%02X, run=%d, level=%d\n", dct_coeff_next, run, level);
+						//fprintf(stderr, "read_block(): dct_coeff_next=%02X, run=%d, level=%d\n", dct_coeff_next, run, level);
 					}
 					dct_zz_i += run;
 					dct_zz[dct_zz_i++] = level;
@@ -1096,14 +1110,14 @@ class MpegDecoder{
 	private:
 		void print_block(int *block, bool isZz){
 			for(int i = 0; i < 8; i++){
-				fprintf(stderr, "MpegDecoder.print_block(): ");
+				//fprintf(stderr, "MpegDecoder.print_block(): ");
 				for(int j = 0; j < 8; j++){
 					int k = isZz? scan[i][j]: 8*i + j;
-					fprintf(stderr, "%4d ",  *(block + k));
+					//fprintf(stderr, "%4d ",  *(block + k));
 				}
-				fprintf(stderr, "\n");
+				//fprintf(stderr, "\n");
 			}
-			fprintf(stderr, "\n");
+			//fprintf(stderr, "\n");
 			return;
 		}
 		void idct_block(){
@@ -1241,21 +1255,7 @@ class MpegDecoder{
 			return;
 		}
 		void non_intra_block_decode(int i){
-			if(picture_coding_type == 2){
-				ref_by_motion_vector(i, recon_right_for, recon_down_for, pel_past_y, pel_past_cb, pel_past_cr, false);
-			}
-			if(picture_coding_type == 3){
-				if(macroblock_motion_forward && !macroblock_motion_backward){
-					ref_by_motion_vector(i, recon_right_for, recon_down_for, pel_past_y, pel_past_cb, pel_past_cr, false);
-				}
-				if(!macroblock_motion_forward && macroblock_motion_backward){
-					ref_by_motion_vector(i, recon_right_back, recon_down_back, pel_future_y, pel_future_cb, pel_future_cr, false);
-				}
-				if(macroblock_motion_forward && macroblock_motion_backward){
-					ref_by_motion_vector(i, recon_right_for, recon_down_for, pel_past_y, pel_past_cb, pel_past_cr, false);
-					ref_by_motion_vector(i, recon_right_back, recon_down_back, pel_future_y, pel_future_cb, pel_future_cr, true);
-				}
-			}
+			// TODO
 
 			// calculate dct coefficients
 			for(int m = 0; m < 8; m++) for(int n = 0; n < 8; n++){
@@ -1322,7 +1322,7 @@ class MpegDecoder{
 			return;
 		}
 		void ref_by_motion_vector(int i, int &recon_right, int &recon_down, int **&pel_ref_y, int **&pel_ref_cb, int **&pel_ref_cr, bool isAvg){
-			fprintf(stderr, "ref_by_motion_vector(): i=%d, recon_right=%d, recon_down=%d, isAvg=%d\n", i, recon_right, recon_down, isAvg);
+			//fprintf(stderr, "ref_by_motion_vector(): i=%d, recon_right=%d, recon_down=%d, isAvg=%d\n", i, recon_right, recon_down, isAvg);
 			int right, down;
 			int right_half, down_half;
 			int y, x;
@@ -1420,7 +1420,7 @@ class MpegDecoder{
 				}
 			}
 			if(nextbits(4*8) == SEQUENCE_END_CODE){
-				fprintf(stderr, "Done.\n");
+				//fprintf(stderr, "Done.\n");
 			}
 			else{
 				EXIT("read(): error. //sequence_end_code");
@@ -1430,10 +1430,10 @@ class MpegDecoder{
 };
 
 int main(int argc, char *argv[]){
-	if(argc < 2) EXIT("Usage: main [input.m1v]");
+	if(argc < 3) EXIT("Usage: main [input.m1v] [output_dir]");
 	char *inputName = argv[1], *outputName = argv[2];
 
-	MpegDecoder md(inputName);
+	MpegDecoder md(inputName, outputName);
 	md.read();
 
 	return 0;

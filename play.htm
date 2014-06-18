@@ -1,29 +1,38 @@
 <html>
 	<head>
 		<style>
-			.b{
+			input{
 				font-size:20pt;
 			}
 		</style>
 	</head>
 	<body>
 		<hr id="progress" align="left" size="10" width="1" color="green">
+		<form>
+			<p>
+			<input type="text" name="dirname">
+			</p>
+		</form>
 		<p>
-		<img style="display:none;" onload="if(isConti){document.images[1].src=this.src;document.images[1].style.display='';i=(i+1)%(max_i+1);}">
+		<img style="display:none;" onload="if(isConti){document.images[1].src=this.src;document.images[1].style.display='';i=(i+1)%(max_i+1);buffering.style.display='none';}" onerror="buffering.style.display='';">
 		<img style="display:none;">
-		</p>
-		<p>
-		<input class="b" type="button" onclick="isConti=!isConti;this.value=this.value=='Stop'?'Play':'Stop';" value="Stop">
+		<span id="buffering">buffering...</span>
 		</p>
 		<script>
 			var dt = 30;
 			var i = 0;
 			var max_i = 119;
-			var dir = "test/";
+			var dir = "";
 			var isConti = true;
-			setInterval(function(){
+			var buffering = document.getElementById('buffering');
+			var dirname = document.forms[0].dirname;
+			var tv = setInterval(function(){
+				if(dir != dirname.value){
+					dir = dirname.value;
+					i = 0;
+				}
 				document.getElementById('progress').width = (((i + 1)/(max_i + 1))*100).toPrecision(2) + "%";
-				document.images[0].src = dir + i + ".bmp";
+				document.images[0].src = dir + "/" + i + ".bmp";
 			}, dt);
 		</script>
 	</body>

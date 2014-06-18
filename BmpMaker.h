@@ -56,9 +56,9 @@ class BmpMaker{
 			return;
 		}
 	public:
-		void make(const char *filename, int *r, int *g, int *b, int width, int height){
+		void make(const char *filepath, int *r, int *g, int *b, int width, int height){
 			//fprintf(stderr, "Making bmp bmpFile...\n");
-			bmpFile.set_filename(filename);
+			bmpFile.set_filepath(filepath);
 
 			/*
 			int test_r[] = {0, 0, 0, 0};
