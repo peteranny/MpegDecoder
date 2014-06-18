@@ -189,7 +189,7 @@ class Huffman{
 			return;
 		}
 		void make_hash_table(){
-			print_codewords();
+			//print_codewords();
 			// produce huffman hash function
 			int i = isIncr? 0: nSymbols + 1; // hashed symbol index
 			for(int codeword = 0; codeword < nCodewords; codeword++){
