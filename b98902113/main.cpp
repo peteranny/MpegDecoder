@@ -1,8 +1,7 @@
-#include <stdio.h>
 #include "mpeg1.h"
+MPEG1 mpeg;
 int main(int argc, char *argv[]){
-
-	fprintf(stderr, "%s\n", argv[1]);
-	MPEG1 mpeg;
-	mpeg.open(argv[1], 0);
+	mpeg.loadInfo("I_ONLY.m1v");
+	mpeg.open("I_ONLY.m1v", 0);
+	return 0;
 }

@@ -9,18 +9,12 @@ using namespace std;
 void HTABLE::load(const char *filename){
     int n,symbol;
     FILE* ft = fopen(filename,"r");
-
     char code[20];
     rs.push_back(new int[256]);
-
     rl.push_back(new char[256]);
-
     memset(rs[0],0,256);
     memset(rl[0],0,256);
-
     fscanf(ft,"%d",&n);
-
-
     for( int i=0; i<n; i++ ){
         fscanf(ft,"%s %d",code,&symbol);
         int l = strlen(code);

@@ -1,10 +1,11 @@
-IN="../../MPEG/IP_ONLY.m1v"
+IN=I_ONLY.m1v
 all:
 	g++ -g -o main main.cpp mpeg1.cpp huffman.cpp
+run:
 	./main $(IN)
 
-forall: main.cpp mpeg1.o huffman.o
-	g++ main.cpp mpeg1.o huffman.o -o main-lcomdlg32 -lgdi32 -O3 -static -lm -lwinmm
+winall: winmain.cpp resource.o mpeg1.o huffman.o
+	g++ winmain.cpp resource.o mpeg1.o huffman.o -o winmain.exe -lcomdlg32 -lgdi32 -O3 -static -lm -lwinmm
 
 main.exe: main.cpp mpeg1.o huffman.o
 	g++ main.cpp mpeg1.o huffman.o -o main.exe -O3

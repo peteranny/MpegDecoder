@@ -1,7 +1,7 @@
 <html>
 	<head>
 		<style>
-			input{
+			*{
 				font-size:20pt;
 			}
 		</style>
@@ -10,7 +10,7 @@
 		<hr id="progress" align="left" size="10" width="1" color="green">
 		<form>
 			<p>
-			<input type="text" name="dirname">
+			<input type="text" name="dirname"> / <input type="text" name="dtfield">pps
 			</p>
 		</form>
 		<p>
@@ -19,21 +19,29 @@
 		<span id="buffering">buffering...</span>
 		</p>
 		<script>
-			var dt = 30;
 			var i = 0;
 			var max_i = 119;
 			var dir = "";
+			var dt = 1024;
 			var isConti = true;
 			var buffering = document.getElementById('buffering');
 			var dirname = document.forms[0].dirname;
-			var tv = setInterval(function(){
+			var dtfield = document.forms[0].dtfield;
+			function play(){
 				if(dir != dirname.value){
 					dir = dirname.value;
 					i = 0;
 				}
+				if(!isNaN(parseInt(dtfield.value)) && dt != parseInt(dtfield.value) && parseInt(dtfield.value) > 0){
+					dt = (1/parseInt(dtfield.value)*1000);
+				}
+				console.log(dt)
 				document.getElementById('progress').width = (((i + 1)/(max_i + 1))*100).toPrecision(2) + "%";
 				document.images[0].src = dir + "/" + i + ".bmp";
-			}, dt);
+				setTimeout("play()", dt);
+			}
+			
+			play();
 		</script>
 	</body>
 </html>

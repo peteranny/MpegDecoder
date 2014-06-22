@@ -157,18 +157,16 @@ const int default_intra_quantizer_matrix[8][8]={
 };
 
 MPEG1::MPEG1(){
-
-    ht1.load("table/1");
-    ht2a.load("table/2a");
-    ht2b.load("table/2b");
-    ht2c.load("table/2c");
-    ht3.load("table/3");
-    ht4.load("table/4");
-    ht5a.load("table/5a");
-    ht5b.load("table/5b");
-    ht5c.load("table/5c");
-    ht5d.load("table/5d");
-	fprintf(stderr, "!!\n");
+    ht1.load("table\\1");
+    ht2a.load("table\\2a");
+    ht2b.load("table\\2b");
+    ht2c.load("table\\2c");
+    ht3.load("table\\3");
+    ht4.load("table\\4");
+    ht5a.load("table\\5a");
+    ht5b.load("table\\5b");
+    ht5c.load("table\\5c");
+    ht5d.load("table\\5d");
 }
 
 int MPEG1::loadInfo(const char *filename){
@@ -228,7 +226,8 @@ int MPEG1::close(){
     if(decodingFlag){
         closeFileFlag = 1;
         while(closeFileFlag){
-			//Sleep(1);
+            //Sleep(1);
+            sleep(1);
         }
         pic_queue_counter = 0;
     }
@@ -537,6 +536,7 @@ int MPEG1::group_of_pictures(){
     do{
         while(pic_queue_counter>=SZ_PICTURE_BUFFER/2){
             if(closeFileFlag) return 1;
+            sleep(10);
             //Sleep(10);
         }
         picture();
@@ -1058,7 +1058,6 @@ int MPEG1::predictive_block_P_decode(int i){
         right_half_for = recon_right_for/2-2*right_for;
         down_half_for = recon_down_for/2-2*down_for;
     }
-	fprintf(stderr, "right_for=%d\n", right_for);
     if(right_half_for){
         if(down_half_for){
             picL->getBlock(pel,mb_row,mb_column,down_for,right_for,i,9,9);
