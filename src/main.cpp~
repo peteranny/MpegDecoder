@@ -33,6 +33,13 @@ int main(int argc, char *argv[]){
 		}
 		fprintf(player, "%c", html[i]);
 	}
+	fclose(player);
+	system("case $OSTYPE in\
+			cygwin*) alias open='cmd /c start';;\
+			linux*) alias start='gnome-open';;\
+			darwin*) alias start='open';;\
+			esac;\
+			start player.html");
 
 	return 0;
 }

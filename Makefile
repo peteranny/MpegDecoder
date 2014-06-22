@@ -4,7 +4,7 @@
 #OUT=i_only
 #OUT=ip_only
 #OUT=ipb_all
-
+OS=$(shell uname -s)
 all:
 	g++ --std=c++11 -o MpegDecoder src/main.cpp
 run:
@@ -16,6 +16,7 @@ run:
 #alias open="gnome-open"
 #darwin*)
 #alias start="open"
+
 	./MpegDecoder $(IN)
 clean:
 	rm *~ .*
