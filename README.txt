@@ -1,0 +1,8 @@
+R02922038
+
+Type "make" to build executable file (under Unix environment)
+
+Type "make run IN=[m1v path]" to decode .m1v files
+After the decoding process is done, player.html is automatically
+opened and play the mpeg file.
+

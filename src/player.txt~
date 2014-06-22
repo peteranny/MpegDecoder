@@ -1,0 +1,47 @@
+R"xxx(<html>
+	<head>
+		<style>
+			*{
+				font-size:20pt;
+			}
+		</style>
+	</head>
+	<body>
+		<hr id="progress" align="left" size="10" width="1" color="green">
+		<form>
+			<p>
+			<input type="text" name="dirname" value="?"> / <input type="text" name="dtfield" value="?">pps
+			</p>
+		</form>
+		<p>
+		<img style="display:none;" onload="if(isConti){document.images[1].src=this.src;document.images[1].style.display='';i=(i+1)%(max_i+1);buffering.style.display='none';}" onerror="buffering.style.display='';">
+		<img style="display:none;">
+		<span id="buffering">buffering...</span>
+		</p>
+		<script>
+			var i = 0;
+			var max_i = 119;
+			var dir = "";
+			var dt = 1024;
+			var isConti = true;
+			var buffering = document.getElementById('buffering');
+			var dirname = document.forms[0].dirname;
+			var dtfield = document.forms[0].dtfield;
+			function play(){
+				if(dir != dirname.value){
+					dir = dirname.value;
+					i = 0;
+				}
+				if(!isNaN(parseInt(dtfield.value)) && dt != parseInt(dtfield.value) && parseInt(dtfield.value) > 0){
+					dt = (1/parseInt(dtfield.value)*1000);
+				}
+				console.log(dt)
+				document.getElementById('progress').width = (((i + 1)/(max_i + 1))*100).toPrecision(2) + "%";
+				document.images[0].src = dir + "/" + i + ".bmp";
+				setTimeout("play()", dt);
+			}
+			
+			play();
+		</script>
+	</body>
+</html>)xxx";

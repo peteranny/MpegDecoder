@@ -20,7 +20,6 @@ class FileReader{
 			file = fopen(filename, "rb");
 			if(!file) EXIT("FileReader() error.");
 			read(1, &cur_byte);
-			cur_posi_in_byte = 0;
 		}
 
 	private:
